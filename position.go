@@ -7,7 +7,14 @@ package ahm
 type Position struct {
 	line, column int
 	isNewline    bool
+	srcName      string
 }
+
+func InSource(srcName string) Position {
+	return Position{srcName: srcName}
+}
+
+func (pos Position) SourceName() string { return pos.srcName }
 
 func (pos Position) Line() int   { return pos.line }
 func (pos Position) Column() int { return pos.column }

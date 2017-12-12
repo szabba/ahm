@@ -12,14 +12,15 @@ import (
 
 func TestZeroPosition(t *testing.T) {
 	// given
-	var pos Position
+	var zero Position
 
 	// when
 
 	// then
-	assert.That(pos.Line() == 0, t.Errorf, "the zero position must be on line 0")
-	assert.That(pos.Column() == 0, t.Errorf, "the zero position must be in column 0")
-	assert.That(!pos.IsValid(), t.Errorf, "the zero position must not be valid")
+	assert.That(zero.Line() == 0, t.Errorf, "the zero position must be on line 0")
+	assert.That(zero.Column() == 0, t.Errorf, "the zero position must be in column 0")
+	assert.That(!zero.IsValid(), t.Errorf, "the zero position must not be valid")
+	assert.That(zero.SourceName() == "", t.Errorf, "the zero position has an empty source name")
 }
 
 func TestFirstPositionAfterZero(t *testing.T) {
@@ -41,21 +42,21 @@ func TestNewlinePosition(t *testing.T) {
 	prev := zero.Next('a').Next('b').Next('c')
 
 	// when
-	newline := prev.Next('\n')
+	endOfLine := prev.Next('\n')
 
 	// then
 	assert.That(
-		newline.Line() == prev.Line(),
+		endOfLine.Line() == prev.Line(),
 		t.Errorf,
 		"the newline position must be on the same line as the previous position")
 
 	assert.That(
-		newline.Column() == 1+prev.Column(),
+		endOfLine.Column() == 1+prev.Column(),
 		t.Errorf,
 		"the newline position must be in the next column, compared to the previous position")
 
 	assert.That(
-		newline.IsValid(),
+		endOfLine.IsValid(),
 		t.Errorf,
 		"the newline position must be valid")
 }
@@ -63,24 +64,39 @@ func TestNewlinePosition(t *testing.T) {
 func TestPositionAfterNewline(t *testing.T) {
 	// given
 	var zero Position
-	eol := zero.Next('a').Next('b').Next('c').Next('\n')
+	endOfLine := zero.Next('a').Next('b').Next('c').Next('\n')
 
 	// when
-	nextLine := eol.Next('d')
+	nextPos := endOfLine.Next('d')
 
 	// then
 	assert.That(
-		nextLine.Line() == 1+eol.Line(),
+		nextPos.Line() == 1+endOfLine.Line(),
 		t.Errorf,
 		"the position after a newline must be on the next line, compared to the previous position")
 
 	assert.That(
-		nextLine.Column() == 1,
+		nextPos.Column() == 1,
 		t.Errorf,
 		"the position after a newline must be in the first column")
 
 	assert.That(
-		nextLine.IsValid(),
+		nextPos.IsValid(),
 		t.Errorf,
 		"the position after a newline position must be valid")
+}
+
+func TestSourceNameIsKeptInNextPosition(t *testing.T) {
+	// given
+	curr := InSource("example.ahm").Next('@')
+
+	// when
+	next := curr.Next('A')
+
+	// then
+	assert.That(
+		next.SourceName() == curr.SourceName(),
+		t.Errorf,
+		"position must have the same source name as it's predecessor")
+
 }
