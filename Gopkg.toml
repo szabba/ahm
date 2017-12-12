@@ -1,0 +1,10 @@
+# Refer to https://github.com/golang/dep/blob/master/docs/Gopkg.toml.md
+# for detailed Gopkg.toml documentation.
+
+required = ["github.com/szabba/irgen"]
+
+[[constraint]]
+    name = "github.com/szabba/irgen"
+    version = "0.2.0"
+
+
