@@ -34,3 +34,7 @@ func (pos Position) Next(r rune) Position {
 	next.isNewline = r == '\n'
 	return next
 }
+
+func (pos Position) StartRange() Range {
+	return Range{pos, pos}
+}
