@@ -7,4 +7,10 @@ required = ["github.com/szabba/irgen"]
     name = "github.com/szabba/irgen"
     version = "0.2.0"
 
+[[constraint]]
+    name = "github.com/kr/pretty"
+    revision = "cfb55aafdaf3ec08f0db22699ab822c50091b1c4"
 
+[[constraint]]
+    name = "github.com/pkg/errors"
+    version = "v0.8.0"
