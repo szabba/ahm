@@ -1,0 +1,34 @@
+@DOCUMENT
+  @TITLE A quick and dirty documentation format
+  @AUTHOR Karol Marcjan
+  @DATE
+    @TODAY
+
+@IMPORT GO
+
+This is how you'd do something Markdown-like in Ahm.
+
+@H1 A header.
+@H2 A nested header.
+@H6 HTML goes up to this, right?
+
+Kinetic energy is
+@MATH E_k = \frac{1}{2} m v^2
+, as you should remember from school.
+
+Want a code block? You can have a code block!
+
+@CODE go
+  @GO/FMT
+    package main
+
+    import "fmt"
+
+    func main() {
+      fmt.Println("Hello, world!")
+    }
+
+Want to include from an outside file?
+@CODE go
+  @INCLUDE-FROM ../somedir/some_file.go
+    @GO/INCLUDE-FUNCTION-BODY someExampleFunc

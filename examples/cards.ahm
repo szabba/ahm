@@ -1,0 +1,19 @@
+@EPISODE A New Hope
+  
+  @CONDITIONS
+    @VALUE Luke.yearning-to-leave 40
+    @VALUE Force.disturbance 10
+  
+  @CARD title-screen
+    A long time ago, in a Galaxy not so far from here.
+    
+    *Pompous music is playing.*
+    
+    @CHOICE
+      @OPTION "Change the music theme to Star Trek!"
+        @EFFECT
+          ...
+
+      @OPTION "Change the music theme to Doctor Who!"
+        @EFFECT
+          ...
