@@ -301,6 +301,65 @@ func TestDedentsArePossibleWithinAValidNode(t *testing.T) {
 	reportDiffs(t.Errorf, node, wantNode)
 }
 
+func TestNestedTextCanBeFollowedByDedentedText(t *testing.T) {
+	// given
+	wantNode := &Proc{
+		Name: "PARENT",
+		Children: []Node{
+			&Text{
+				multiline("A", ""),
+			},
+		},
+	}
+
+	rawInput := multiline(
+		"@PARENT",
+		"  A",
+		"")
+	input := strings.NewReader(rawInput)
+
+	parser := NewParser(input)
+
+	// when
+	node, err := parser.Parse()
+
+	// then
+	assert.That(node != nil, t.Errorf, "the node returned must not be nil")
+	assert.That(errors.Cause(err) == io.EOF, t.Errorf, "got error %q, wanted %q", err, io.EOF)
+	reportDiffs(t.Errorf, node, wantNode)
+
+}
+
+func TestNestedTextCanHaveUnderindentedEmptyLines(t *testing.T) {
+	// given
+	wantNode := &Proc{
+		Name: "PARENT",
+		Children: []Node{
+			&Text{
+				multiline("A", "", "child"),
+			},
+		},
+	}
+
+	rawInput := multiline(
+		"@PARENT",
+		"  A",
+		"",
+		"  child")
+	input := strings.NewReader(rawInput)
+
+	parser := NewParser(input)
+
+	// when
+	node, err := parser.Parse()
+
+	// then
+	assert.That(node != nil, t.Errorf, "the node returned must not be nil")
+	assert.That(errors.Cause(err) == io.EOF, t.Errorf, "got error %q, wanted %q", err, io.EOF)
+	reportDiffs(t.Errorf, node, wantNode)
+}
+
+
 func multiline(lines ...string) string {
 	var buf bytes.Buffer
 	last := len(lines) - 1
