@@ -12,75 +12,43 @@ import (
 
 func TestZeroPosition(t *testing.T) {
 	// given
-	var zero Position
 
 	// when
+	var first Position
 
 	// then
-	assert.That(zero.Line == 0, t.Errorf, "the zero position must be on line 0")
-	assert.That(zero.Column == 0, t.Errorf, "the zero position must be in column 0")
-	assert.That(!zero.IsValid(), t.Errorf, "the zero position must not be valid")
+	assert.That(first.GetLine() == 1, t.Errorf, "the first position must be on line 1")
+	assert.That(first.GetColumn() == 1, t.Errorf, "the first position must be in column 1")
 }
 
-func TestFirstPositionAfterZero(t *testing.T) {
+func TestPositionAfterOneRune(t *testing.T) {
 	// given
-	var zero Position
+	var first Position
 
 	// when
-	first := zero.Next('a')
+	afterOne := first.NextAfter('a')
 
 	// then
-	assert.That(first.Line == 1, t.Errorf, "the first position must be on line 1")
-	assert.That(first.Column == 1, t.Errorf, "the first position must be in column 1")
-	assert.That(first.IsValid(), t.Errorf, "the first position must be valid")
-}
-
-func TestNewlinePosition(t *testing.T) {
-	// given
-	var zero Position
-	prev := zero.Next('a').Next('b').Next('c')
-
-	// when
-	endOfLine := prev.Next('\n')
-
-	// then
-	assert.That(
-		endOfLine.Line == prev.Line,
-		t.Errorf,
-		"the newline position must be on the same line as the previous position")
-
-	assert.That(
-		endOfLine.Column == 1+prev.Column,
-		t.Errorf,
-		"the newline position must be in the next column, compared to the previous position")
-
-	assert.That(
-		endOfLine.IsValid(),
-		t.Errorf,
-		"the newline position must be valid")
+	assert.That(afterOne.GetLine() == 1, t.Errorf, "the position must be on line 1")
+	assert.That(afterOne.GetColumn() == 2, t.Errorf, "the position must be in column 2")
 }
 
 func TestPositionAfterNewline(t *testing.T) {
 	// given
-	var zero Position
-	endOfLine := zero.Next('a').Next('b').Next('c').Next('\n')
+	var first Position
+	prev := first.NextAfter('a').NextAfter('b').NextAfter('c')
 
 	// when
-	nextPos := endOfLine.Next('d')
+	startOfNewLine := prev.NextAfter('\n')
 
 	// then
 	assert.That(
-		nextPos.Line == 1+endOfLine.Line,
+		startOfNewLine.GetLine() == 1+prev.GetLine(),
 		t.Errorf,
 		"the position after a newline must be on the next line, compared to the previous position")
 
 	assert.That(
-		nextPos.Column == 1,
+		startOfNewLine.GetColumn() == 1,
 		t.Errorf,
 		"the position after a newline must be in the first column")
-
-	assert.That(
-		nextPos.IsValid(),
-		t.Errorf,
-		"the position after a newline position must be valid")
 }

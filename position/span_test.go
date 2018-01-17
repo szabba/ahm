@@ -12,54 +12,36 @@ import (
 
 func TestSpanFromPosition(t *testing.T) {
 	// given
-	pos := Position{}.Next('a').Next('\n').Next('c')
+	pos := Position{}.NextAfter('a').NextAfter('\n').NextAfter('c')
 
 	// when
 	span := pos.StartSpan()
 
 	// then
-	assert.That(span.Start == pos, t.Errorf, "a new span should start at the position it was created from")
-	assert.That(span.End == pos, t.Errorf, "a new span should end at the position it was created from")
+	assert.That(span.StartsAt() == pos, t.Errorf, "a new span should start at the position it was created from")
+	assert.That(span.EndsBefore() == pos, t.Errorf, "a new span should end at the position it was created from")
 }
 
 func TestSpanAdd(t *testing.T) {
 	// given
-	pos := Position{}.Next('a').Next('\n').Next('c')
+	pos := Position{}.NextAfter('a').NextAfter('\n').NextAfter('c')
 	initSpan := pos.StartSpan()
-	nextPos := pos.Next('d').Next('\n').Next('\n').Next('g')
+	nextPos := pos.NextAfter('d').NextAfter('\n').NextAfter('\n').NextAfter('g')
 
 	// when
 	span := initSpan.Add('d').Add('\n').Add('\n').Add('g')
 
 	// then
 	assert.That(
-		span.Start == pos,
+		span.StartsAt() == pos,
 		t.Errorf,
 		"after adds, a span should start where it initially did")
 
+	t.Logf("nextPos = %s", nextPos)
+	t.Logf("span.EndsBefore() = %s", span.EndsBefore())
+
 	assert.That(
-		span.End == nextPos,
+		span.EndsBefore() == nextPos,
 		t.Errorf,
 		"after adds, a span should end where one would get to by traversing the rune sequence")
-}
-
-func TestSpanAddStartingAtZeroPos(t *testing.T) {
-	// given
-	zero := Position{}
-	firstValid := zero.Next('a')
-	nextPos := firstValid.Next('b').Next('\n').Next('c')
-
-	// when
-	span := zero.StartSpan().Add('a').Add('b').Add('\n').Add('c')
-
-	// then
-	assert.That(
-		span.Start == firstValid,
-		t.Errorf,
-		"after adds, a span created from a zero position should start at the first valid one")
-
-	assert.That(
-		span.End == nextPos,
-		t.Errorf,
-		"after adds, a span created from a zero positon should end where one would get to by traversing the rune sequence")
 }
