@@ -19,13 +19,11 @@ const (
 )
 
 type Lexer struct {
-	src io.RuneScanner
-
+	src       io.RuneScanner
 	nextToken tokenBuilder
 	indents   indentStack
-
-	next func() error
-	err  error
+	next      func() error
+	err       error
 }
 
 func NewFromReader(input io.Reader) *Lexer {
@@ -44,7 +42,6 @@ func (lex *Lexer) Next() (token.Token, error) {
 		lex.next = nil
 		return token.Token{}, lex.err
 	}
-
 	lex.err = lex.next()
 	tok := lex.nextToken.build()
 	lex.adjustCurrentIndent(tok)
@@ -55,7 +52,6 @@ func (lex *Lexer) adjustCurrentIndent(tok token.Token) {
 	switch tok.TokenType {
 	case token.Indent:
 		lex.indents.pushIndent(tok.Text)
-
 	case token.Dedent:
 		lex.indents.popIndent()
 	}
@@ -90,7 +86,6 @@ func (lex *Lexer) tryToScanIndent() error {
 func (lex *Lexer) produceDedents(n int) func() error {
 	return func() error {
 		lex.next = lex.nextWhenDedentsLeft(n)
-
 		lex.startToken(token.Dedent)
 		return nil
 	}
@@ -108,7 +103,6 @@ func (lex *Lexer) scanLineAfterIndent() error {
 	if err != nil && err != io.EOF {
 		return err
 	}
-
 	if r == ProcMarkRune {
 		return lex.scanProcMark()
 	}
@@ -125,7 +119,6 @@ func (lex *Lexer) scanProcMark() error {
 	lex.next = lex.scanProcName
 	lex.startToken(token.ProcMark)
 	return lex.acceptOne(ProcMarkRune)
-
 }
 
 func (lex *Lexer) scanProcName() error {
@@ -143,10 +136,8 @@ func (lex *Lexer) scanProcRest() error {
 	if err != nil && err != io.EOF {
 		return err
 	}
-
 	lex.next = lex.scanNewline
 	lex.startToken(token.ProcArg)
-
 	return lex.acceptWhile(isNotNewline)
 }
 
@@ -162,7 +153,6 @@ func (lex *Lexer) skipWhile(p func(rune) bool) error {
 	if err != nil {
 		return err
 	}
-
 	return nil
 }
 
@@ -208,14 +198,12 @@ func (lex *Lexer) acceptStrings(strs ...string) (n int, err error) {
 
 func (lex *Lexer) acceptOne(want rune) error {
 	r, _, err := lex.src.ReadRune()
-
 	if err != nil {
 		return err
 	}
 	if r != want {
 		return ahmerr.NewUnexpectedRuneError(r, want)
 	}
-
 	lex.nextToken.acceptRune(r)
 	return nil
 }
