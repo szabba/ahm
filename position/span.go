@@ -26,14 +26,14 @@ type Span struct {
 
 func SpanFromTo(from, to Position) Span {
 	assert.That(
-		from.GetLine() <= to.GetLine(),
+		from.Line() <= to.Line(),
 		log.Panicf,
 		"start position (%s) must not be on a line further than the end position (%s)",
 		from, to)
 
-	if from.GetLine() == to.GetLine() {
+	if from.Line() == to.Line() {
 		assert.That(
-			from.GetColumn() <= to.GetColumn(),
+			from.Column() <= to.Column(),
 			log.Panicf,
 			"start position (%s) must not be on a column further than the end position (%s) that is on the same line",
 			from, to)

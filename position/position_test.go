@@ -17,8 +17,8 @@ func TestZeroPosition(t *testing.T) {
 	var first Position
 
 	// then
-	assert.That(first.GetLine() == 1, t.Errorf, "the first position must be on line 1")
-	assert.That(first.GetColumn() == 1, t.Errorf, "the first position must be in column 1")
+	assert.That(first.Line() == 1, t.Errorf, "the first position must be on line 1")
+	assert.That(first.Column() == 1, t.Errorf, "the first position must be in column 1")
 }
 
 func TestPositionAfterOneRune(t *testing.T) {
@@ -29,8 +29,8 @@ func TestPositionAfterOneRune(t *testing.T) {
 	afterOne := first.NextAfter('a')
 
 	// then
-	assert.That(afterOne.GetLine() == 1, t.Errorf, "the position must be on line 1")
-	assert.That(afterOne.GetColumn() == 2, t.Errorf, "the position must be in column 2")
+	assert.That(afterOne.Line() == 1, t.Errorf, "the position must be on line 1")
+	assert.That(afterOne.Column() == 2, t.Errorf, "the position must be in column 2")
 }
 
 func TestPositionAfterNewline(t *testing.T) {
@@ -43,12 +43,12 @@ func TestPositionAfterNewline(t *testing.T) {
 
 	// then
 	assert.That(
-		startOfNewLine.GetLine() == 1+prev.GetLine(),
+		startOfNewLine.Line() == 1+prev.Line(),
 		t.Errorf,
 		"the position after a newline must be on the next line, compared to the previous position")
 
 	assert.That(
-		startOfNewLine.GetColumn() == 1,
+		startOfNewLine.Column() == 1,
 		t.Errorf,
 		"the position after a newline must be in the first column")
 }

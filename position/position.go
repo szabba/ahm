@@ -17,7 +17,7 @@ type PositionIn struct {
 }
 
 func (pos PositionIn) String() string {
-	return fmt.Sprintf("%s:%d,%d", pos.Source, pos.line, pos.column)
+	return fmt.Sprintf("%s:%d,%d", pos.Source, pos.Line(), pos.Column())
 }
 
 type Position struct {
@@ -32,11 +32,11 @@ func PositionOf(line, column int) Position {
 
 func First() Position { return Position{} }
 
-func (pos Position) GetLine() int   { return pos.line + 1 }
-func (pos Position) GetColumn() int { return pos.column + 1 }
+func (pos Position) Line() int   { return pos.line + 1 }
+func (pos Position) Column() int { return pos.column + 1 }
 
 func (pos Position) String() string {
-	return fmt.Sprintf("%d,%d", pos.line, pos.column)
+	return fmt.Sprintf("%d,%d", pos.Line(), pos.Column())
 }
 
 func (pos Position) In(source string) PositionIn {
