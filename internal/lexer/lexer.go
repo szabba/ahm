@@ -5,7 +5,6 @@
 package lexer
 
 import (
-	"bufio"
 	"io"
 	"unicode"
 
@@ -24,10 +23,6 @@ type Lexer struct {
 	indents   indentStack
 	next      func() error
 	err       error
-}
-
-func NewFromReader(input io.Reader) *Lexer {
-	return New(bufio.NewReader(input))
 }
 
 func New(input io.RuneScanner) *Lexer {
