@@ -22,3 +22,11 @@ func (stack *indentStack) popIndent() {
 	assert.That(len(stack.indents) >= 1, log.Panicf, "stack underflow")
 	stack.indents = stack.indents[:len(stack.indents)-1]
 }
+
+func (stack *indentStack) isNotEmpty() bool {
+	return stack.count() > 0
+}
+
+func (stack *indentStack) count() int {
+	return len(stack.indents)
+}

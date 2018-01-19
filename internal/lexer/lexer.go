@@ -91,11 +91,33 @@ func (lex *Lexer) produceDedents(n int) func() error {
 	}
 }
 
+func (lex *Lexer) produceFinalDedents(n int) func() error {
+	return func() error {
+		lex.next = lex.nextWhenFinalDedentsLeft(n)
+		lex.startToken(token.Dedent)
+		return lex.finalDedentError(n)
+	}
+}
+
 func (lex *Lexer) nextWhenDedentsLeft(n int) func() error {
 	if n > 1 {
 		return lex.produceDedents(n - 1)
 	}
 	return lex.scanLineAfterIndent
+}
+
+func (lex *Lexer) nextWhenFinalDedentsLeft(n int) func() error {
+	if n > 1 {
+		return lex.produceFinalDedents(n - 1)
+	}
+	return nil
+}
+
+func (lex *Lexer) finalDedentError(n int) error {
+	if n > 1 {
+		return nil
+	}
+	return io.EOF
 }
 
 func (lex *Lexer) scanLineAfterIndent() error {
@@ -112,7 +134,12 @@ func (lex *Lexer) scanLineAfterIndent() error {
 func (lex *Lexer) scanText() error {
 	lex.next = lex.scanNewline
 	lex.startToken(token.Text)
-	return lex.acceptWhile(isNotNewline)
+	err := lex.acceptWhile(isNotNewline)
+	if err == io.EOF && lex.indents.isNotEmpty() {
+		lex.next = lex.produceFinalDedents(lex.indents.count())
+		return nil
+	}
+	return err
 }
 
 func (lex *Lexer) scanProcMark() error {
@@ -122,7 +149,7 @@ func (lex *Lexer) scanProcMark() error {
 }
 
 func (lex *Lexer) scanProcName() error {
-	lex.next = lex.scanProcRest
+	lex.next = lex.scanProcArg
 	lex.startToken(token.ProcName)
 	err := lex.acceptWhile(isNotSpace)
 	if err != nil && err != io.EOF {
@@ -131,14 +158,19 @@ func (lex *Lexer) scanProcName() error {
 	return nil
 }
 
-func (lex *Lexer) scanProcRest() error {
+func (lex *Lexer) scanProcArg() error {
 	err := lex.skipWhile(isIntralineSpace)
 	if err != nil && err != io.EOF {
 		return err
 	}
 	lex.next = lex.scanNewline
 	lex.startToken(token.ProcArg)
-	return lex.acceptWhile(isNotNewline)
+	err = lex.acceptWhile(isNotNewline)
+	if err == io.EOF && lex.indents.isNotEmpty() {
+		lex.next = lex.produceFinalDedents(lex.indents.count())
+		return nil
+	}
+	return err
 }
 
 func (lex *Lexer) scanNewline() error {

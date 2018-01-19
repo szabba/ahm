@@ -69,6 +69,7 @@ func TestProcWithTextChild(t *testing.T) {
 		token.Token{token.Newline, span(1, 6, 2, 1), "\n"},
 		token.Token{token.Indent, span(2, 1, 2, 3), "  "},
 		token.Token{token.Text, span(2, 3, 2, 13), "Child text"},
+		token.Token{token.Dedent, span(2, 13, 2, 13), ""},
 	)
 }
 
@@ -87,6 +88,7 @@ func TestProcWithProcChild(t *testing.T) {
 		token.Token{token.ProcMark, span(2, 3, 2, 4), "@"},
 		token.Token{token.ProcName, span(2, 4, 2, 9), "child"},
 		token.Token{token.ProcArg, span(2, 9, 2, 9), ""},
+		token.Token{token.Dedent, span(2, 9, 2, 9), ""},
 	)
 }
 
@@ -109,6 +111,8 @@ func TestProcWithTextGrandchild(t *testing.T) {
 		token.Token{token.Newline, span(2, 10, 3, 1), "\n"},
 		token.Token{token.Indent, span(3, 3, 3, 7), "    "},
 		token.Token{token.Text, span(3, 7, 3, 12), "child"},
+		token.Token{token.Dedent, span(3, 12, 3, 12), ""},
+		token.Token{token.Dedent, span(3, 12, 3, 12), ""},
 	)
 }
 
@@ -171,6 +175,8 @@ func expectTokens(t *testing.T, rawInput string, tokens ...token.Token) {
 
 	for i, want := range tokens {
 		tok, err = lexer.Next()
+		t.Logf("token %d: token = %s", i, tok)
+		assert.That(err == nil, t.Logf, "token %d: error: %s", i, err)
 
 		assert.That(tok == want, t.Fatalf, "token %d: got %s, wanted %s", i, tok, want)
 
