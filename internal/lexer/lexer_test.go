@@ -135,6 +135,7 @@ func TestProcWithChildThenTextSibling(t *testing.T) {
 		token.Token{token.Text, span(3, 1, 3, 5), "aunt"},
 	)
 }
+
 func TestProcWithTextGrandchildThenTextSibling(t *testing.T) {
 	expectTokens(
 		t, multiline(
@@ -175,10 +176,11 @@ func expectTokens(t *testing.T, rawInput string, tokens ...token.Token) {
 
 	for i, want := range tokens {
 		tok, err = lexer.Next()
+
 		t.Logf("token %d: token = %s", i, tok)
 		assert.That(err == nil, t.Logf, "token %d: error: %s", i, err)
 
-		assert.That(tok == want, t.Fatalf, "token %d: got %s, wanted %s", i, tok, want)
+		assert.That(tok == want, t.Fatalf, "token %d: got %s", i, tok)
 
 		isLast := i+1 == len(tokens)
 

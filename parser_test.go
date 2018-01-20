@@ -28,9 +28,9 @@ func TestSingleLineTextIsRead(t *testing.T) {
 	node, err := parser.Parse()
 
 	// then
-	assert.That(errors.Cause(err) == io.EOF, t.Errorf, "got error %q, expected %q", err, io.EOF)
-	assert.That(node != nil, t.Errorf, "the node returned must not be nil")
-	reportDiffs(t.Errorf, node, wantNode)
+	assert.That(errors.Cause(err) == io.EOF, t.Fatalf, "got error %q, expected %q", err, io.EOF)
+	assert.That(node != nil, t.Fatalf, "the node returned must not be nil")
+	reportDiffs(t.Fatalf, node, wantNode)
 }
 
 func TestMultipleLinesOfTextAreRead(t *testing.T) {
@@ -48,9 +48,9 @@ func TestMultipleLinesOfTextAreRead(t *testing.T) {
 	node, err := parser.Parse()
 
 	// then
-	assert.That(errors.Cause(err) == io.EOF, t.Errorf, "got error %q, expected %q", err, io.EOF)
-	assert.That(node != nil, t.Errorf, "the node returned must not be nil")
-	reportDiffs(t.Errorf, node, wantNode)
+	assert.That(errors.Cause(err) == io.EOF, t.Fatalf, "got error %q, expected %q", err, io.EOF)
+	assert.That(node != nil, t.Fatalf, "the node returned must not be nil")
+	reportDiffs(t.Fatalf, node, wantNode)
 }
 
 func TestTextReadingStopsAtALinePrefixedWithAnAtSign(t *testing.T) {
@@ -70,9 +70,9 @@ func TestTextReadingStopsAtALinePrefixedWithAnAtSign(t *testing.T) {
 	node, err := parser.Parse()
 
 	// then
-	assert.That(node != nil, t.Errorf, "the node returned must not be nil")
-	assert.That(err == nil, t.Errorf, "got error %q, expected none", err)
-	reportDiffs(t.Errorf, node, wantNode)
+	assert.That(node != nil, t.Fatalf, "the node returned must not be nil")
+	assert.That(err == nil, t.Fatalf, "got error %q, expected none", err)
+	reportDiffs(t.Fatalf, node, wantNode)
 }
 
 func TestNameOnlyProcIsRead(t *testing.T) {
@@ -89,9 +89,9 @@ func TestNameOnlyProcIsRead(t *testing.T) {
 	node, err := parser.Parse()
 
 	// then
-	assert.That(node != nil, t.Errorf, "the node returned must not be nil")
-	assert.That(errors.Cause(err) == io.EOF, t.Errorf, "got error %q, wanted %q", err, io.EOF)
-	reportDiffs(t.Errorf, node, wantNode)
+	assert.That(node != nil, t.Fatalf, "the node returned must not be nil")
+	assert.That(errors.Cause(err) == io.EOF, t.Fatalf, "got error %q, wanted %q", err, io.EOF)
+	reportDiffs(t.Fatalf, node, wantNode)
 }
 
 func TestSpacesAreNotIncludedInReadProcName(t *testing.T) {
@@ -108,9 +108,9 @@ func TestSpacesAreNotIncludedInReadProcName(t *testing.T) {
 	node, err := parser.Parse()
 
 	// then
-	assert.That(node != nil, t.Errorf, "the node returned must not be nil")
-	assert.That(errors.Cause(err) == io.EOF, t.Errorf, "got error %q, wanted %q", err, io.EOF)
-	reportDiffs(t.Errorf, node, wantNode)
+	assert.That(node != nil, t.Fatalf, "the node returned must not be nil")
+	assert.That(errors.Cause(err) == io.EOF, t.Fatalf, "got error %q, wanted %q", err, io.EOF)
+	reportDiffs(t.Fatalf, node, wantNode)
 }
 
 func TestProcWithNameAndTitleIsRead(t *testing.T) {
@@ -127,9 +127,9 @@ func TestProcWithNameAndTitleIsRead(t *testing.T) {
 	node, err := parser.Parse()
 
 	// then
-	assert.That(node != nil, t.Errorf, "the node returned must not be nil")
-	assert.That(errors.Cause(err) == io.EOF, t.Errorf, "got error %q, wanted %q", err, io.EOF)
-	reportDiffs(t.Errorf, node, wantNode)
+	assert.That(node != nil, t.Fatalf, "the node returned must not be nil")
+	assert.That(errors.Cause(err) == io.EOF, t.Fatalf, "got error %q, wanted %q", err, io.EOF)
+	reportDiffs(t.Fatalf, node, wantNode)
 }
 
 func TestProcReadingStopsAtNextNonindentedLine(t *testing.T) {
@@ -147,9 +147,9 @@ func TestProcReadingStopsAtNextNonindentedLine(t *testing.T) {
 	node, err := parser.Parse()
 
 	// then
-	assert.That(node != nil, t.Errorf, "the node returned must not be nil")
-	assert.That(err == nil, t.Errorf, "got error %q, wanted none", err)
-	reportDiffs(t.Errorf, node, wantNode)
+	assert.That(node != nil, t.Fatalf, "the node returned must not be nil")
+	assert.That(err == nil, t.Fatalf, "got error %q, wanted none", err)
+	reportDiffs(t.Fatalf, node, wantNode)
 }
 
 func TestProcReadIncludesIndentedTextAsChild(t *testing.T) {
@@ -174,9 +174,9 @@ func TestProcReadIncludesIndentedTextAsChild(t *testing.T) {
 	node, err := parser.Parse()
 
 	// then
-	assert.That(node != nil, t.Errorf, "the node returned must not be nil")
-	assert.That(errors.Cause(err) == io.EOF, t.Errorf, "got error %q, wanted %q", err, io.EOF)
-	reportDiffs(t.Errorf, node, wantNode)
+	assert.That(node != nil, t.Fatalf, "the node returned must not be nil")
+	assert.That(errors.Cause(err) == io.EOF, t.Fatalf, "got error %q, wanted %q", err, io.EOF)
+	reportDiffs(t.Fatalf, node, wantNode)
 }
 
 func TestIndentedTextChildCanSpanMultipleLines(t *testing.T) {
@@ -202,9 +202,9 @@ func TestIndentedTextChildCanSpanMultipleLines(t *testing.T) {
 	node, err := parser.Parse()
 
 	// then
-	assert.That(node != nil, t.Errorf, "the node returned must not be nil")
-	assert.That(errors.Cause(err) == io.EOF, t.Errorf, "got error %q, wanted %q", err, io.EOF)
-	reportDiffs(t.Errorf, node, wantNode)
+	assert.That(node != nil, t.Fatalf, "the node returned must not be nil")
+	assert.That(errors.Cause(err) == io.EOF, t.Fatalf, "got error %q, wanted %q", err, io.EOF)
+	reportDiffs(t.Fatalf, node, wantNode)
 }
 
 func TestAProcCanHaveMultipleIndentedChildren(t *testing.T) {
@@ -230,9 +230,9 @@ func TestAProcCanHaveMultipleIndentedChildren(t *testing.T) {
 	node, err := parser.Parse()
 
 	// then
-	assert.That(node != nil, t.Errorf, "the node returned must not be nil")
-	assert.That(errors.Cause(err) == io.EOF, t.Errorf, "got error %q, wanted %q", err, io.EOF)
-	reportDiffs(t.Errorf, node, wantNode)
+	assert.That(node != nil, t.Fatalf, "the node returned must not be nil")
+	assert.That(errors.Cause(err) == io.EOF, t.Fatalf, "got error %q, wanted %q", err, io.EOF)
+	reportDiffs(t.Fatalf, node, wantNode)
 }
 
 func TestNodesCanBeNestedBeyondOneLevel(t *testing.T) {
@@ -262,9 +262,9 @@ func TestNodesCanBeNestedBeyondOneLevel(t *testing.T) {
 	node, err := parser.Parse()
 
 	// then
-	assert.That(node != nil, t.Errorf, "the node returned must not be nil")
-	assert.That(errors.Cause(err) == io.EOF, t.Errorf, "got error %q, wanted %q", err, io.EOF)
-	reportDiffs(t.Errorf, node, wantNode)
+	assert.That(node != nil, t.Fatalf, "the node returned must not be nil")
+	assert.That(errors.Cause(err) == io.EOF, t.Fatalf, "got error %q, wanted %q", err, io.EOF)
+	reportDiffs(t.Fatalf, node, wantNode)
 }
 
 func TestDedentsArePossibleWithinAValidNode(t *testing.T) {
@@ -296,9 +296,9 @@ func TestDedentsArePossibleWithinAValidNode(t *testing.T) {
 	node, err := parser.Parse()
 
 	// then
-	assert.That(node != nil, t.Errorf, "the node returned must not be nil")
-	assert.That(errors.Cause(err) == io.EOF, t.Errorf, "got error %q, wanted %q", err, io.EOF)
-	reportDiffs(t.Errorf, node, wantNode)
+	assert.That(node != nil, t.Fatalf, "the node returned must not be nil")
+	assert.That(errors.Cause(err) == io.EOF, t.Fatalf, "got error %q, wanted %q", err, io.EOF)
+	reportDiffs(t.Fatalf, node, wantNode)
 }
 
 func TestNestedTextCanBeFollowedByDedentedText(t *testing.T) {
@@ -306,9 +306,7 @@ func TestNestedTextCanBeFollowedByDedentedText(t *testing.T) {
 	wantNode := &Proc{
 		Name: "PARENT",
 		Children: []Node{
-			&Text{
-				multiline("A", ""),
-			},
+			&Text{"A"},
 		},
 	}
 
@@ -324,10 +322,9 @@ func TestNestedTextCanBeFollowedByDedentedText(t *testing.T) {
 	node, err := parser.Parse()
 
 	// then
-	assert.That(node != nil, t.Errorf, "the node returned must not be nil")
-	assert.That(errors.Cause(err) == io.EOF, t.Errorf, "got error %q, wanted %q", err, io.EOF)
-	reportDiffs(t.Errorf, node, wantNode)
-
+	assert.That(node != nil, t.Fatalf, "the node returned must not be nil")
+	assert.That(err == nil, t.Fatalf, "unexpected error: %s", err, io.EOF)
+	reportDiffs(t.Fatalf, node, wantNode)
 }
 
 func TestNestedTextCanHaveUnderindentedEmptyLines(t *testing.T) {
@@ -354,11 +351,10 @@ func TestNestedTextCanHaveUnderindentedEmptyLines(t *testing.T) {
 	node, err := parser.Parse()
 
 	// then
-	assert.That(node != nil, t.Errorf, "the node returned must not be nil")
-	assert.That(errors.Cause(err) == io.EOF, t.Errorf, "got error %q, wanted %q", err, io.EOF)
-	reportDiffs(t.Errorf, node, wantNode)
+	assert.That(node != nil, t.Fatalf, "the node returned must not be nil")
+	assert.That(errors.Cause(err) == io.EOF, t.Fatalf, "got error %q, wanted %q", err, io.EOF)
+	reportDiffs(t.Fatalf, node, wantNode)
 }
-
 
 func multiline(lines ...string) string {
 	var buf bytes.Buffer
