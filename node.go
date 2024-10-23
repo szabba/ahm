@@ -10,6 +10,7 @@ import (
 )
 
 type Node struct {
+	lineNo      int64
 	proc        bool
 	name, title string
 	children    []Node
@@ -30,18 +31,15 @@ func Text(text string) Node { return Node{text: text} }
 func (n Node) Proc() bool { return n.proc }
 func (n Node) Text() bool { return !n.proc }
 
-func (n Node) mustProc() {
-	if !n.proc {
-		msg := fmt.Sprintf("%s is not a proc", n)
-		panic(msg)
-	}
-}
+func (n Node) LineNo() int64 { return n.lineNo }
 
-func (n Node) mustText() {
-	if n.proc {
-		msg := fmt.Sprintf("%s is not text", n)
+func (n Node) PlacedAt(lineNo int64) Node {
+	if lineNo < 1 {
+		msg := fmt.Sprintf("invalid line number %d", lineNo)
 		panic(msg)
 	}
+	n.lineNo = lineNo
+	return n
 }
 
 func (n Node) Name() string {
@@ -62,6 +60,20 @@ func (n Node) Children() []Node {
 func (n Node) NodeText() string {
 	n.mustText()
 	return n.text
+}
+
+func (n Node) mustProc() {
+	if !n.proc {
+		msg := fmt.Sprintf("%s is not a proc", n)
+		panic(msg)
+	}
+}
+
+func (n Node) mustText() {
+	if n.proc {
+		msg := fmt.Sprintf("%s is not text", n)
+		panic(msg)
+	}
 }
 
 func (n Node) String() string {

@@ -74,6 +74,39 @@ func TestEmptyTextIsZeroValue(t *testing.T) {
 	assert.UsingFmt(t.Errorf).That(theval.Zero(n))
 }
 
+func TestNewNodeHasZeroLineNo(t *testing.T) {
+	// given
+	n := ahm.Text("Sample")
+
+	// when
+	no := n.LineNo()
+
+	// then
+	assert.UsingFmt(t.Errorf).That(theval.Zero(no))
+}
+
+func TestPlacedNodeHasLineNoSet(t *testing.T) {
+	// given
+	n := ahm.Text("").PlacedAt(12)
+
+	// when
+	no := n.LineNo()
+
+	// then
+	assert.UsingFmt(t.Errorf).That(theval.Equal(no, 12))
+}
+
+func TestNodeCannotBePlacedAtNegativePosition(t *testing.T) {
+	// given
+	unplaced := ahm.Text("")
+
+	// when
+	caught := catchPanic(func() { unplaced.PlacedAt(-7) })
+
+	// then
+	assert.UsingFmt(t.Errorf).That(theval.NotZero(caught))
+}
+
 func TestRawTextIsNodeText(t *testing.T) {
 	// given
 	text := "Sample"
