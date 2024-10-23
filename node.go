@@ -4,17 +4,86 @@
 
 package ahm
 
-type Document struct {
-	nodes []Node
+import (
+	"fmt"
+	"strings"
+)
+
+type Node struct {
+	proc        bool
+	name, title string
+	children    []Node
+	text        string
 }
 
-//go:generate irgen Node NodeConsumer
-
-type Node interface {
-	FeedTo(NodeConsumer)
+func Proc(name, title string, children ...Node) Node {
+	return Node{
+		proc:     true,
+		name:     name,
+		title:    title,
+		children: children,
+	}
 }
 
-type NodeConsumer interface {
-	Proc(Name, Title string, Children []Node)
-	Text(Text string)
+func Text(text string) Node { return Node{text: text} }
+
+func (n Node) Proc() bool { return n.proc }
+func (n Node) Text() bool { return !n.proc }
+
+func (n Node) mustProc() {
+	if !n.proc {
+		msg := fmt.Sprintf("%s is not a proc", n)
+		panic(msg)
+	}
+}
+
+func (n Node) mustText() {
+	if n.proc {
+		msg := fmt.Sprintf("%s is not text", n)
+		panic(msg)
+	}
+}
+
+func (n Node) Name() string {
+	n.mustProc()
+	return n.name
+}
+
+func (n Node) Title() string {
+	n.mustProc()
+	return n.title
+}
+
+func (n Node) Children() []Node {
+	n.mustProc()
+	return n.children
+}
+
+func (n Node) NodeText() string {
+	n.mustText()
+	return n.text
+}
+
+func (n Node) String() string {
+	var buf strings.Builder
+
+	if !n.proc {
+		buf.WriteString(`Text(`)
+		fmt.Fprintf(&buf, "%q", n.text)
+		buf.WriteString(`)`)
+		return buf.String()
+	}
+
+	buf.WriteString(`Proc(`)
+	fmt.Fprintf(&buf, "%q", n.name)
+	buf.WriteString(`, `)
+	fmt.Fprintf(&buf, "%q", n.title)
+
+	for _, c := range n.children {
+		buf.WriteString(`, `)
+		buf.WriteString(c.String())
+	}
+
+	buf.WriteString(`)`)
+	return buf.String()
 }
