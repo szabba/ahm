@@ -1,0 +1,21 @@
+@GRANDPARENT
+
+    @PARENT
+        @CHILD
+        @CHILD
+
+    @SIBLING
+        @CHILD
+
+      @MISMATCH
+        @CHILD-OF-MISMATCH
+
+    @MISMATCH
+
+  @MISMATCH
+
+@GRANDAUNT
+    @COUSIN
+
+  @MISMATCH
+        @CHILD-OF-MISMATCH
