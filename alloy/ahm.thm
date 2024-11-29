@@ -1,0 +1,46 @@
+<?xml version="1.0"?>
+<alloy>
+
+<view nodetheme="Martha" useOriginalAtomNames="yes">
+
+<defaultnode/>
+
+<defaultedge/>
+
+<node>
+   <type name="Empty"/>
+   <type name="FurtherIndent"/>
+   <type name="Int"/>
+   <type name="Line"/>
+   <type name="NoIndent"/>
+   <type name="ProcHeader"/>
+   <type name="String"/>
+   <type name="Text"/>
+   <type name="univ"/>
+   <type name="seq/Int"/>
+</node>
+
+<node color="Green">
+   <set name="$first" type="Line"/>
+</node>
+
+<node shape="Parallelogram" color="White">
+   <type name="Indent"/>
+</node>
+
+<edge layout="no">
+   <relation name="prefixOf"> <type name="Indent"/> <type name="Indent"/> </relation>
+</edge>
+
+<edge style="Dotted">
+   <relation name="$children"> <type name="Line"/> <type name="Line"/> </relation>
+   <relation name="indent"> <type name="Line"/> <type name="Indent"/> </relation>
+</edge>
+
+<edge style="Dotted" layout="yes" constraint="no">
+   <relation name="$siblings"> <type name="Line"/> <type name="Line"/> </relation>
+</edge>
+
+</view>
+
+</alloy>
