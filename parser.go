@@ -8,7 +8,6 @@ import (
 	"errors"
 	"fmt"
 	"io"
-	"log"
 	"regexp"
 	"slices"
 	"strings"
@@ -163,7 +162,6 @@ func forestify(nodes []indentedNode) ([]indentedNode, []error) {
 	left := nodes
 	// The lenght of left will be changing as we go - tricky stuff!
 	for len(left) > 0 {
-		log.Printf("left = %s", left)
 		n := left[0]
 
 		if n.Indent != "" {
@@ -191,14 +189,11 @@ func fold(parent indentedNode, left []indentedNode) (indentedNode, []indentedNod
 	childIndent := parent.Indent
 
 	for {
-		log.Printf("parent = %s", parent)
-		log.Printf("left = %s", left)
 		if len(left) == 0 {
 			return parent, left, errs
 		}
 
 		n := left[0]
-		log.Printf("indents = %q / %q / %q", parent.Indent, childIndent, n.Indent)
 
 		if strings.HasPrefix(parent.Indent, n.Indent) {
 			// dedent - some ancestor might deal with a mismatch
@@ -224,7 +219,6 @@ func fold(parent indentedNode, left []indentedNode) (indentedNode, []indentedNod
 		if strings.HasPrefix(n.Indent, parent.Indent) && childIndent == parent.Indent {
 			// indent - n is the first non-empty child
 			childIndent = n.Indent
-			log.Printf("first child")
 		}
 
 		if childIndent == n.Indent {
@@ -305,6 +299,5 @@ func title(parts []string) string {
 func splitIndent(s string) (indent, after string) {
 	after = strings.TrimLeft(s, "\t\v\f\r ")
 	indent = s[:len(s)-len(after)]
-	log.Printf("%q == %q + %q", s, indent, after)
 	return indent, after
 }
