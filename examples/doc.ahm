@@ -31,4 +31,4 @@ Want a code block? You can have a code block!
 Want to include from an outside file?
 @CODE go
   @INCLUDE-FROM ../somedir/some_file.go
-    @GO/INCLUDE-FUNCTION-BODY someExampleFunc
+    @GO/FUNCTION-BODY someExampleFunc
