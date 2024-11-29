@@ -31,9 +31,11 @@ func Text(text string) Node { return Node{text: text} }
 func (n Node) Proc() bool { return n.proc }
 func (n Node) Text() bool { return !n.proc }
 
+func (n Node) Empty() bool { return n.Text() && n.NodeText() == "" }
+
 func (n Node) LineNo() int64 { return n.lineNo }
 
-func (n Node) PlacedAt(lineNo int64) Node {
+func (n Node) PlacedOnLine(lineNo int64) Node {
 	if lineNo < 1 {
 		msg := fmt.Sprintf("invalid line number %d", lineNo)
 		panic(msg)

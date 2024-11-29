@@ -87,7 +87,7 @@ func TestNewNodeHasZeroLineNo(t *testing.T) {
 
 func TestPlacedNodeHasLineNoSet(t *testing.T) {
 	// given
-	n := ahm.Text("").PlacedAt(12)
+	n := ahm.Text("").PlacedOnLine(12)
 
 	// when
 	no := n.LineNo()
@@ -96,12 +96,12 @@ func TestPlacedNodeHasLineNoSet(t *testing.T) {
 	assert.UsingFmt(t.Errorf).That(theval.Equal(no, 12))
 }
 
-func TestNodeCannotBePlacedAtNegativePosition(t *testing.T) {
+func TestNodeCannotBePlaceOnANegativeLine(t *testing.T) {
 	// given
 	unplaced := ahm.Text("")
 
 	// when
-	caught := catchPanic(func() { unplaced.PlacedAt(-7) })
+	caught := catchPanic(func() { unplaced.PlacedOnLine(-7) })
 
 	// then
 	assert.UsingFmt(t.Errorf).That(theval.NotZero(caught))
