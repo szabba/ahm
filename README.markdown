@@ -30,7 +30,7 @@ The name stands for _at-sign header markup_.
 
 These are not _all_ the languages one could compare Ahm with.
 The list is not supposed to be exhaustive.
-The ones listed are chosen 
+The ones listed are chosen because of their prevalence and relation to Ahm's goals.
 
 * **Markdown** is a markup language supported in many tools.
   It is generally easy to get started with, but hides gnarly complexities.
