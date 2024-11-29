@@ -2,379 +2,289 @@
 // License, v. 2.0. If a copy of the MPL was not distributed with this
 // file, You can obtain one at http://mozilla.org/MPL/2.0/.
 
-package ahm
+package ahm_test
 
 import (
-	"bytes"
+	"fmt"
 	"io"
+	"reflect"
+	"slices"
 	"strings"
 	"testing"
 
-	"github.com/kr/pretty"
-	"github.com/pkg/errors"
-	"github.com/szabba/ahm/assert"
+	"github.com/szabba/assert/v3"
+	"github.com/szabba/assert/v3/assertions/theerr"
+	"github.com/szabba/assert/v3/assertions/theslice"
+	"github.com/szabba/assert/v3/assertions/theval"
+
+	"github.com/szabba/ahm"
 )
 
-func TestSingleLineTextIsRead(t *testing.T) {
-	// given
-	wantNode := &Text{"A line."}
+func TestErrorPlacedAt(t *testing.T) {
 
-	rawInput := "A line."
-	input := strings.NewReader(rawInput)
+	t.Run("PanicsWithNonPositiveLineNumber", func(t *testing.T) {
+		// given
+		lineNo := int64(0)
+		err := io.EOF
 
-	parser := NewParser(input)
+		// when
+		caught := catchPanic(func() { ahm.ErrOnLine(lineNo, err) })
 
-	// when
-	node, err := parser.Parse()
+		// then
+		assert.UsingFmt(t.Errorf).That(theval.Equal(caught, "line number 0 out of range"))
+	})
 
-	// then
-	assert.That(errors.Cause(err) == io.EOF, t.Fatalf, "got error %q, expected %q", err, io.EOF)
-	assert.That(node != nil, t.Fatalf, "the node returned must not be nil")
-	reportDiffs(t.Fatalf, node, wantNode)
+	t.Run("PanicsWhenGivenANilError", func(t *testing.T) {
+		// given
+		lineNo := int64(9)
+		var err error
+
+		// when
+
+		// when
+		caught := catchPanic(func() { ahm.ErrOnLine(lineNo, err) })
+
+		// then
+		assert.UsingFmt(t.Errorf).That(theval.Equal(caught, "wrapping nil error at line 9"))
+	})
+
+	t.Run("CreatesAnErrorThatWrapsTheOriginal", func(t *testing.T) {
+		// given
+		lineNo := int64(11)
+		err := io.EOF
+
+		// when
+		placedErr := ahm.ErrOnLine(lineNo, err)
+
+		// then
+		assert.UsingFmt(t.Errorf).That(theerr.Is(placedErr, err))
+	})
+
+	t.Run("DoubleWrappedErrorIsTheRoot", func(t *testing.T) {
+		// given
+		lineNo := int64(11)
+		err := fmt.Errorf("context %d: %w", 10, io.EOF)
+
+		// when
+		placedErr := ahm.ErrOnLine(lineNo, err)
+
+		// then
+		assert.UsingFmt(t.Errorf).That(theerr.Is(placedErr, io.EOF))
+	})
+
 }
 
-func TestMultipleLinesOfTextAreRead(t *testing.T) {
-	// given
-	wantNode := &Text{"Multiple\nlines."}
-	rawInput := multiline(
-		"Multiple",
-		"lines.")
-
-	input := strings.NewReader(rawInput)
-
-	parser := NewParser(input)
-
-	// when
-	node, err := parser.Parse()
-
-	// then
-	assert.That(errors.Cause(err) == io.EOF, t.Fatalf, "got error %q, expected %q", err, io.EOF)
-	assert.That(node != nil, t.Fatalf, "the node returned must not be nil")
-	reportDiffs(t.Fatalf, node, wantNode)
-}
-
-func TestTextReadingStopsAtALinePrefixedWithAnAtSign(t *testing.T) {
-	// given
-	wantNode := &Text{"Some lines\nof text."}
-
-	rawInput := multiline(
-		"Some lines",
-		"of text.",
-		"@A-PROC")
-
-	input := strings.NewReader(rawInput)
-
-	parser := NewParser(input)
-
-	// when
-	node, err := parser.Parse()
-
-	// then
-	assert.That(node != nil, t.Fatalf, "the node returned must not be nil")
-	assert.That(err == nil, t.Fatalf, "got error %q, expected none", err)
-	reportDiffs(t.Fatalf, node, wantNode)
-}
-
-func TestNameOnlyProcIsRead(t *testing.T) {
-	// given
-	wantNode := &Proc{Name: "A-PROC"}
-
-	rawInput := "@A-PROC"
-
-	input := strings.NewReader(rawInput)
-
-	parser := NewParser(input)
-
-	// when
-	node, err := parser.Parse()
-
-	// then
-	assert.That(node != nil, t.Fatalf, "the node returned must not be nil")
-	assert.That(errors.Cause(err) == io.EOF, t.Fatalf, "got error %q, wanted %q", err, io.EOF)
-	reportDiffs(t.Fatalf, node, wantNode)
-}
-
-func TestSpacesAreNotIncludedInReadProcName(t *testing.T) {
-	// given
-	wantNode := &Proc{Name: "A-PROC"}
-
-	rawInput := "@A-PROC "
-
-	input := strings.NewReader(rawInput)
-
-	parser := NewParser(input)
-
-	// when
-	node, err := parser.Parse()
-
-	// then
-	assert.That(node != nil, t.Fatalf, "the node returned must not be nil")
-	assert.That(errors.Cause(err) == io.EOF, t.Fatalf, "got error %q, wanted %q", err, io.EOF)
-	reportDiffs(t.Fatalf, node, wantNode)
-}
-
-func TestProcWithNameAndTitleIsRead(t *testing.T) {
-	// given
-	wantNode := &Proc{Name: "A-PROC", Title: "TITLE"}
-
-	rawInput := "@A-PROC TITLE"
-
-	input := strings.NewReader(rawInput)
-
-	parser := NewParser(input)
-
-	// when
-	node, err := parser.Parse()
-
-	// then
-	assert.That(node != nil, t.Fatalf, "the node returned must not be nil")
-	assert.That(errors.Cause(err) == io.EOF, t.Fatalf, "got error %q, wanted %q", err, io.EOF)
-	reportDiffs(t.Fatalf, node, wantNode)
-}
-
-func TestProcReadingStopsAtNextNonindentedLine(t *testing.T) {
-	// given
-	wantNode := &Proc{Name: "A-PROC", Title: "TITLE"}
-	rawInput := multiline(
-		"@A-PROC TITLE",
-		"Some text.")
-
-	input := strings.NewReader(rawInput)
-
-	parser := NewParser(input)
-
-	// when
-	node, err := parser.Parse()
-
-	// then
-	assert.That(node != nil, t.Fatalf, "the node returned must not be nil")
-	assert.That(err == nil, t.Fatalf, "got error %q, wanted none", err)
-	reportDiffs(t.Fatalf, node, wantNode)
-}
-
-func TestProcReadIncludesIndentedTextAsChild(t *testing.T) {
-	// given
-	wantNode := &Proc{
-		Name:  "A-PROC",
-		Title: "TITLE",
-		Children: []Node{
-			&Text{"Some text."},
+func FuzzParse(f *testing.F) {
+	f.Add("")
+	f.Add("@PROC")
+	f.Add("Some text.")
+	f.Add(strings.Join(
+		[]string{
+			"@PROC",
+			"    Child text",
+			"    @CHILD-PROC",
 		},
+		"\n"))
+
+	f.Fuzz(func(t *testing.T, data string) {
+
+		// We care about Parse not panicking.
+		// We don't need a given/when/then structure to test that.
+		t.Logf("%q", data)
+		r := strings.NewReader(data)
+		ahm.Parse(r)
+	})
+}
+
+func TestParse(t *testing.T) {
+	// given
+	cases := map[string]ParseCase{
+		"Empty": ParseCase{}.
+			WithLines("").
+			ExpectingNodes(ahm.Text("")),
+
+		"OneLineOfText": ParseCase{}.
+			WithLines("One line").
+			ExpectingNodes(ahm.Text("One line")),
+
+		"MultipleLinesOfText": ParseCase{}.
+			WithLines(
+				"One line.",
+				"And another.").
+			ExpectingNodes(
+				ahm.Text("One line."),
+				ahm.Text("And another.")),
+
+		"EmptyNameProc": ParseCase{}.
+			WithLines("@").
+			ExpectingNodes().
+			ExpectingErrorPlacedAt(1, ahm.ErrUnacceptableProcName("")),
+
+		"NameOnlyProc": ParseCase{}.
+			WithLines("@TOC").
+			ExpectingNodes(ahm.Proc("TOC", "")),
+
+		"OneLineProc": ParseCase{}.
+			WithLines("@NAME Title").
+			ExpectingNodes(ahm.Proc("NAME", "Title")),
+
+		"IndentedFirstLine": ParseCase{}.
+			WithLines(
+				"    @DONE List tasks.",
+				"@TODO Do the thing.").
+			ExpectingNodes(
+				ahm.Proc("DONE", "List tasks."),
+				ahm.Proc("TODO", "Do the thing.")).
+			ExpectingErrorPlacedAt(1, ahm.ErrMismatchedIndents()),
+
+		"SuddenlyIndentedText": ParseCase{}.
+			WithLines(
+				"A line.",
+				"    And another, unexpectedly indented.").
+			ExpectingNodes(
+				ahm.Text("A line."),
+				ahm.Text("And another, unexpectedly indented.")).
+			ExpectingErrorPlacedAt(2, ahm.ErrMismatchedIndents()),
+
+		"ProcWithChild": ParseCase{}.
+			WithLines(
+				"@CODE bash",
+				"    git status").
+			ExpectingNodes(
+				ahm.Proc("CODE", "bash",
+					ahm.Text("git status"))),
+
+		"ProcWithChildAndGrandChild": ParseCase{}.
+			WithLines(
+				"@PROC",
+				"    @CHILD",
+				"        @GRANDCHILD").
+			ExpectingNodes(
+				ahm.Proc("PROC", "",
+					ahm.Proc("CHILD", "",
+						ahm.Proc("GRANDCHILD", "")))),
+
+		"ProcWithMisindentedChildText": ParseCase{}.
+			WithLines(
+				"@PROC",
+				"    @CHILD-PROC",
+				"  Misindented text.").
+			ExpectingNodes(
+				ahm.Proc("PROC", "",
+					ahm.Proc("CHILD-PROC", ""),
+					ahm.Text("Misindented text."))).
+			ExpectingErrorPlacedAt(3, ahm.ErrMismatchedIndents()),
+
+		"ProcWithMisindentedChildProc": ParseCase{}.
+			WithLines(
+				"@PROC",
+				"    @CHILD-PROC",
+				"  @MISINDENTED-CHILD-PROC").
+			ExpectingNodes(
+				ahm.Proc("PROC", "",
+					ahm.Proc("CHILD-PROC", ""),
+					ahm.Proc("MISINDENTED-CHILD-PROC", ""))).
+			ExpectingErrorPlacedAt(3, ahm.ErrMismatchedIndents()),
+
+		"TopLevelMisindentedProc": ParseCase{}.
+			WithLines(
+				"Some text.",
+				"    @OVERINDENTED-PROC").
+			ExpectingNodes(
+				ahm.Text("Some text."),
+				ahm.Proc("OVERINDENTED-PROC", "")).
+			ExpectingErrorPlacedAt(2, ahm.ErrMismatchedIndents()),
+
+		"ProcWithChildAfterEmmptyLine": ParseCase{}.
+			WithLines(
+				"@PROC",
+				"        ",
+				"    @CHILD").
+			ExpectingNodes(
+				ahm.Proc("PROC", "",
+					ahm.Text(""),
+					ahm.Proc("CHILD", ""))),
+
+		"ProcWithChildrenAndSibling": ParseCase{}.
+			WithLines(
+				"@PROC",
+				"    Child text",
+				"Sibling text").
+			ExpectingNodes(
+				ahm.Proc("PROC", "",
+					ahm.Text("Child text")),
+				ahm.Text("Sibling text")),
+
+		"ProcFollowedByMismactch": ParseCase{}.
+			WithLines(
+				"@PROC",
+				"    Child text",
+				"\tMismatch").
+			ExpectingNodes(
+				ahm.Proc("PROC", "",
+					ahm.Text("Child text")),
+				ahm.Text("Mismatch")),
 	}
 
-	rawInput := multiline(
-		"@A-PROC TITLE",
-		"  Some text.")
+	for name, tt := range cases {
+		t.Run(name, func(t *testing.T) {
 
-	input := strings.NewReader(rawInput)
+			in := strings.NewReader(tt.Input)
 
-	parser := NewParser(input)
+			// when
+			nodes, err := ahm.Parse(in)
 
-	// when
-	node, err := parser.Parse()
+			// then
+			assert := assert.UsingFmt(t.Errorf)
 
-	// then
-	assert.That(node != nil, t.Fatalf, "the node returned must not be nil")
-	assert.That(errors.Cause(err) == io.EOF, t.Fatalf, "got error %q, wanted %q", err, io.EOF)
-	reportDiffs(t.Fatalf, node, wantNode)
-}
+			assert.That(tt.ExpectedNodes(nodes))
 
-func TestIndentedTextChildCanSpanMultipleLines(t *testing.T) {
-	// given
-	wantNode := &Proc{
-		Name:  "A-PROC",
-		Title: "TITLE",
-		Children: []Node{
-			&Text{"Some lines\nof text."},
-		},
+			for _, errWanted := range tt.Errs {
+				assert.That(theerr.Is(err, errWanted))
+			}
+		})
 	}
-
-	rawInput := multiline(
-		"@A-PROC TITLE",
-		"  Some lines",
-		"  of text.")
-
-	input := strings.NewReader(rawInput)
-
-	parser := NewParser(input)
-
-	// when
-	node, err := parser.Parse()
-
-	// then
-	assert.That(node != nil, t.Fatalf, "the node returned must not be nil")
-	assert.That(errors.Cause(err) == io.EOF, t.Fatalf, "got error %q, wanted %q", err, io.EOF)
-	reportDiffs(t.Fatalf, node, wantNode)
 }
 
-func TestAProcCanHaveMultipleIndentedChildren(t *testing.T) {
-	// given
-	wantNode := &Proc{
-		Name: "A-PARENT",
-		Children: []Node{
-			&Text{"Some text."},
-			&Proc{Name: "A-CHILD"},
-		},
-	}
-
-	rawInput := multiline(
-		"@A-PARENT",
-		"  Some text.",
-		"  @A-CHILD")
-
-	input := strings.NewReader(rawInput)
-
-	parser := NewParser(input)
-
-	// when
-	node, err := parser.Parse()
-
-	// then
-	assert.That(node != nil, t.Fatalf, "the node returned must not be nil")
-	assert.That(errors.Cause(err) == io.EOF, t.Fatalf, "got error %q, wanted %q", err, io.EOF)
-	reportDiffs(t.Fatalf, node, wantNode)
+type ParseCase struct {
+	Input string
+	Nodes []ahm.Node
+	Errs  []error
 }
 
-func TestNodesCanBeNestedBeyondOneLevel(t *testing.T) {
-	// given
-	wantNode := &Proc{
-		Name: "A-GRANDPARENT",
-		Children: []Node{
-			&Proc{
-				Name: "A-PARENT",
-				Children: []Node{
-					&Proc{Name: "A-CHILD"},
-				},
-			},
-		},
-	}
-
-	rawInput := multiline(
-		"@A-GRANDPARENT",
-		"  @A-PARENT",
-		"    @A-CHILD")
-
-	input := strings.NewReader(rawInput)
-
-	parser := NewParser(input)
-
-	// when
-	node, err := parser.Parse()
-
-	// then
-	assert.That(node != nil, t.Fatalf, "the node returned must not be nil")
-	assert.That(errors.Cause(err) == io.EOF, t.Fatalf, "got error %q, wanted %q", err, io.EOF)
-	reportDiffs(t.Fatalf, node, wantNode)
+func (c ParseCase) WithLines(lines ...string) ParseCase {
+	c.Input = strings.Join(lines, "\n")
+	return c
 }
 
-func TestDedentsArePossibleWithinAValidNode(t *testing.T) {
-	// given
-	wantNode := &Proc{
-		Name: "A-GRANDPARENT",
-		Children: []Node{
-			&Proc{
-				Name: "A-PARENT",
-				Children: []Node{
-					&Proc{Name: "A-CHILD"},
-				},
-			},
-			&Proc{Name: "A-PARENT-SIBLING"},
-		},
-	}
-
-	rawInput := multiline(
-		"@A-GRANDPARENT",
-		"  @A-PARENT",
-		"    @A-CHILD",
-		"  @A-PARENT-SIBLING")
-
-	input := strings.NewReader(rawInput)
-
-	parser := NewParser(input)
-
-	// when
-	node, err := parser.Parse()
-
-	// then
-	assert.That(node != nil, t.Fatalf, "the node returned must not be nil")
-	assert.That(errors.Cause(err) == io.EOF, t.Fatalf, "got error %q, wanted %q", err, io.EOF)
-	reportDiffs(t.Fatalf, node, wantNode)
+func (c ParseCase) ExpectingNodes(nodes ...ahm.Node) ParseCase {
+	c.Nodes = nodes
+	c.place(1, nodes)
+	return c
 }
 
-func TestNestedTextCanBeFollowedByDedentedText(t *testing.T) {
-	// given
-	wantNode := &Proc{
-		Name: "PARENT",
-		Children: []Node{
-			&Text{"A"},
-		},
-	}
+func (c ParseCase) place(firstLine int64, nodes []ahm.Node) (nextLine int64) {
 
-	rawInput := multiline(
-		"@PARENT",
-		"  A",
-		"")
-	input := strings.NewReader(rawInput)
+	nextLine = firstLine
+	for i := range nodes {
+		nodes[i] = nodes[i].PlacedOnLine(nextLine)
+		nextLine++
 
-	parser := NewParser(input)
-
-	// when
-	node, err := parser.Parse()
-
-	// then
-	assert.That(node != nil, t.Fatalf, "the node returned must not be nil")
-	assert.That(err == nil, t.Fatalf, "unexpected error: %s", err, io.EOF)
-	reportDiffs(t.Fatalf, node, wantNode)
-}
-
-func TestNestedTextCanHaveUnderindentedEmptyLines(t *testing.T) {
-	// given
-	wantNode := &Proc{
-		Name: "PARENT",
-		Children: []Node{
-			&Text{
-				multiline("A", "", "child"),
-			},
-		},
-	}
-
-	rawInput := multiline(
-		"@PARENT",
-		"  A",
-		"",
-		"  child")
-	input := strings.NewReader(rawInput)
-
-	parser := NewParser(input)
-
-	// when
-	node, err := parser.Parse()
-
-	// then
-	assert.That(node != nil, t.Fatalf, "the node returned must not be nil")
-	assert.That(errors.Cause(err) == io.EOF, t.Fatalf, "got error %q, wanted %q", err, io.EOF)
-	reportDiffs(t.Fatalf, node, wantNode)
-}
-
-func multiline(lines ...string) string {
-	var buf bytes.Buffer
-	last := len(lines) - 1
-	for i, line := range lines {
-		buf.WriteString(line)
-		if i != last {
-			buf.WriteRune('\n')
+		if nodes[i].Proc() {
+			nextLine = c.place(nextLine, nodes[i].Children())
 		}
 	}
-	return buf.String()
+	return nextLine
 }
 
-func reportDiffs(onErr func(string, ...interface{}), got, want interface{}) {
-	diffs := pretty.Diff(got, want)
-	for _, diff := range diffs {
-		onErr(diff)
-	}
-	if len(diffs) > 0 {
-		onErr("got: %# v", pretty.Formatter(got))
-		onErr("wanted: is %# v", pretty.Formatter(want))
-	}
+func (c ParseCase) ExpectingErrorPlacedAt(lineNo int64, err error) ParseCase {
+	c.Errs = append(slices.Clone(c.Errs), ahm.ErrOnLine(lineNo, err))
+	return c
+}
+
+func (c ParseCase) ExpectedNodes(nodes []ahm.Node) error {
+	return theslice.EqualFunc(
+		nodes,
+		c.Nodes,
+		func(l, r ahm.Node) bool { return reflect.DeepEqual(l, r) })
 }
