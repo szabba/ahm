@@ -60,44 +60,42 @@ fun siblings : Line -> Line {
 }
 
 fun children : ProcHeader -> Line {
-	let step0 = nonEmptyChildren |
-	let step1 = 
-		// Add parents for empty lines.
-		step0 + {
-			p: ProcHeader, c: Empty {
-				some cs: Line {
-					cs in p.step0
-					c in between[nextLine, p, cs]
+	nonEmptyChildren + {
+		p: ProcHeader, c: Empty {
+			some cs: Line {
+				cs in p.nonEmptyChildren
+				c in between[nextLine, p, cs]
 
-					no altP: ProcHeader | altP in between[step0, p, cs]
-				}
+				no altP: ProcHeader | altP in between[nonEmptyChildren, p, cs]
 			}
 		}
-	| step1
+	}
 }
 
 fun nonEmptyChildren : ProcHeader -> (Line - Empty) {
-	let step0 = {
-		// We are intentionally not worrying about empty lines for now.
-		p: ProcHeader, c : Line - Empty {
-			// A child candidate must come after a parent candidate.
-			c in p.^nextNonEmptyLine
-			// The indent of a non-empty child is further than that of a parent candidate.
-			c.indent in p.indent.^prefixOf
-		}
-	} | let step1 = {
+	{
 		p, c : Line {
-			p -> c in step0
-			// The parent of a non-empty line is the closest parent candidate.
-			all pc: step0.c - p | p in pc.^nextNonEmptyLine
+			p -> c in underNearestParentCandidate
+			between[nextNonEmptyLine, p, c] in p.^underNearestParentCandidate
 		}
-	} | let step2 = {
-		p, c: Line {
-			p -> c in step1
-			// All non-empty-lines between parent and child must be descendants of the parent.
-			between[nextNonEmptyLine, p, c] in p.^step1
+	}
+}
+
+fun underNearestParentCandidate : ProcHeader -> (Line - Empty) {
+	{
+		p, c : Line {
+			p -> c in afterAndIndentedFurther
+			all pc: afterAndIndentedFurther.c - p | p in pc.^nextNonEmptyLine
 		}
-	} | step2
+	}
+}
+
+fun afterAndIndentedFurther : ProcHeader -> (Line - Empty) {
+	{ p, c : Line | p -> c in nonEmptyAfter and c.indent in p.indent.^prefixOf }
+}
+
+fun nonEmptyAfter : ProcHeader -> (Line - Empty) {
+	{ p : ProcHeader, c : (Line - Empty) | c in p.^nextNonEmptyLine }
 }
 
 fun nextNonEmptyLine : (Line - Empty) -> (Line - Empty) {
