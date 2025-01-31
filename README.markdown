@@ -118,15 +118,16 @@ Want a code block? You can have a code block!
 
 @CODE go
   @GO/FMT
-    package main
-
-    import "fmt"
-
-    func main() {
-      fmt.Println("Hello, world!")
-    }
+    | package main
+    | 
+    | import "fmt"
+    | 
+    | func main() {
+    |     fmt.Println("Hello, world!")
+    | }
 
 Want to include from an outside file?
+
 @CODE go
   @INCLUDE-FROM ../somedir/some_file.go
     @GO/FUNCTION-BODY someExampleFunc
