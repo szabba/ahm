@@ -1,0 +1,102 @@
+<?xml version="1.0"?>
+<alloy>
+
+<view nodetheme="Martha">
+
+<defaultnode/>
+
+<defaultedge/>
+
+<node>
+   <type name="Int"/>
+   <type name="String"/>
+   <type name="univ"/>
+   <type name="doc/Empty"/>
+   <type name="doc/ProcHeader"/>
+   <type name="doc/Text"/>
+   <type name="seq/Int"/>
+</node>
+
+<node color="Red" label="NoIndent">
+   <type name="doc/NoIndent"/>
+</node>
+
+<node shape="Box" label="FurtherIndent">
+   <type name="doc/FurtherIndent"/>
+</node>
+
+<node shape="Egg">
+   <type name="Leaf"/>
+</node>
+
+<node shape="House">
+   <type name="Branch"/>
+</node>
+
+<node shape="Inv Trapezoid" color="Gray">
+   <set name="$last" type="doc/Line"/>
+</node>
+
+<node shape="Trapezoid" color="Gray">
+   <set name="$first" type="doc/Line"/>
+</node>
+
+<node showlabel="no">
+   <set name="MaybeParent" type="doc/ProcHeader"/>
+</node>
+
+<node showlabel="no" style="Bold">
+   <set name="MaybeParent" type="NoParent"/>
+</node>
+
+<node style="Dotted" color="White">
+   <type name="MergeTree"/>
+   <type name="doc/Indent"/>
+</node>
+
+<node style="Solid" color="White">
+   <type name="doc/Line"/>
+</node>
+
+<node visible="no">
+   <type name="doc/ordering/Ord"/>
+</node>
+
+<node visible="no" shape="Parallelogram" color="Green">
+   <type name="NoParent"/>
+</node>
+
+<edge color="Red" style="Bold" attribute="no">
+   <relation name="$next"> <type name="doc/Line"/> <type name="doc/Line"/> </relation>
+</edge>
+
+<edge style="Dotted">
+   <relation name="prefixOf"> <type name="doc/Indent"/> <type name="doc/Indent"/> </relation>
+</edge>
+
+<edge style="Dotted" attribute="no" constraint="no">
+   <relation name="mergedLine"> <type name="MergeTree"/> <type name="doc/Line"/> </relation>
+</edge>
+
+<edge style="Dotted" constraint="no">
+   <relation name="indent"> <type name="doc/Line"/> <type name="doc/Indent"/> </relation>
+</edge>
+
+<edge style="Dotted" visible="no">
+   <relation name="$children"> <type name="doc/ProcHeader"/> <type name="doc/Line"/> </relation>
+</edge>
+
+<edge visible="no">
+   <relation name="$merges"> <type name="MergeTree"/> <type name="MergeTree"/> </relation>
+   <relation name="$prev"> <type name="doc/Line"/> <type name="doc/Line"/> </relation>
+   <relation name="$siblings"> <type name="doc/Line"/> <type name="doc/Line"/> </relation>
+   <relation name="parse"> <type name="MergeTree"/> <type name="NoParent"/> <type name="doc/Line"/> </relation>
+</edge>
+
+<edge visible="no" attribute="yes">
+   <relation name="parse"> <type name="MergeTree"/> <type name="doc/ProcHeader"/> <type name="doc/Line"/> </relation>
+</edge>
+
+</view>
+
+</alloy>
