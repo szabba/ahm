@@ -1,5 +1,5 @@
 // This Alloy 6 model is concerned with the tree/forest structure of an Ahm document.
-module ahm
+module parse
 
 open document as doc
 open util/graph[doc/Line]
@@ -23,20 +23,20 @@ run siblingsWithDifferentIndents {
 	some s1, s2: siblings | no s1.indent & s2.indent
 } for 5 but 10 MergeTree
 
-run nasty { not doc/niceIndents } for 6
+run nasty { not doc/niceIndents } for 5 but 10 MergeTree
 
 run _all {
 	depth[children]
 	branching[children]
 	branching[prefixOf]
 	not tree[children]
-} for 10
+} for 5 but 10 MergeTree
 
 run aChildCanBeEmpty {
 	some ran[children] & Empty
 } for 5 but 10 MergeTree
 
-run longDocument {} for 6 but 15 MergeTree, 6 Line
+run longDocument {} for 6 but 15 MergeTree, exactly 6 Line
 
 pred niceIndents {
 	first.indent = NoIndent
@@ -47,31 +47,41 @@ pred niceIndents {
 
 check noChildHasTwoParents {
 	all c: ran[children] | one children.c
-} for 4 but 8 MergeTree, 4 Line
+} for 4 but 8 MergeTree
 
 check noChildHasTwoParentsWithDifferentIndents {
 	all c: ran[children] | one c.~children.indent
-} for 4 but 8 MergeTree, 4 Line
+} for 4 but 8 MergeTree
 
-check childrenIsForest { forest[children] } for 4 but 8 MergeTree, 4 Line
+check childrenIsForest { forest[children] } for 4 but 8 MergeTree
 
 check allNonRootsAreChildren {
 	Line - roots[children] = ran[children]
-} for 6 but 15 MergeTree, 6 Line
+} for 6 but 15 MergeTree
 
 check allLinesBetweenTheParentAndChildAreDescendantsOfTheParent {
-	all child: ran[children] |
-	let parent = children.child |
+	all parent: dom[children] |
+	all child: parent.children |
 	between[doc/ordering/next, parent, child] in parent.^children
-} for 6 but 15 MergeTree, 6 Line
+} for 5 but 11 MergeTree
+
+check allNonEmptyChildrenAreIndentedFurtherThanTheirParents {
+	all parent: dom[children] |
+	all child: parent.children - Empty |
+	child.indent in parent.indent.^prefixOf
+} for 5 but 11 MergeTree
 
 check noParentHasOnlyEmptyChildren {
 	no p: dom[children] | p.children in Empty
-} for 6 but 15 MergeTree, 6 Line
+} for 5 but 11 MergeTree
 
 check noParentHasAnEmptyLastChild {
-	no parent: ProcHeader | lastLine[parent.children] in Empty
-} for 6 but 15 MergeTree, 6 Line
+	no parent: dom[children] | lastLine[parent.children] in Empty
+} for 5 but 11 MergeTree
+
+check noChildrenWhenAllLinesHaveTheSameIndent {
+	one Line.indent implies no children
+} for 3 but 7 MergeTree
 
 fun siblings : Line -> Line {
     { s1, s2: Line | some p: Line | s1 + s2 in p.children } + (roots[children] -> roots[children]) - iden
@@ -98,24 +108,78 @@ fun merge[lhs : Parse, rhs : Parse] : Parse {
 	lhs + rhs :> parented[rhs] + adopt[lhs, rhs :> orphan[rhs]] + trackUnadopted[lhs, rhs :> orphan[rhs]]
 }
 
-fun adopt[lhs : Parse, rhs : Parse] : Parse {
-	{
-		parent : ran[lhs :> ProcHeader], child : ran[rhs]
-	|
+check theEmptyBinaryRelationIsTheLeftIdentityOfMerge {
+	all p : MergeTree.parse | merge[none -> none, p] = p
+} for 5 but 10 MergeTree
+
+check theEmptyBinaryRelationIsTheRightIdentityOfMerge {
+	all p : MergeTree.parse | p = merge[p, none -> none]
+} for 5 but 10 MergeTree
+
+check mergeIsAssociative {
+	all disj a, b, c : MergeTree {
 		{
-			// The child is indented further than the parent.
-			child.indent in parent.indent.^prefixOf
-
-			// All rejected parents are indented less than the actual one.
-			all alt: ran[lhs :> ProcHeader] - parent {
-				child.indent in alt.indent.^prefixOf implies parent.indent in alt.indent.^prefixOf
+			one p : MergeTree {
+				{
+					a = p.leftChild
+					b = p.rightChild.leftChild
+					c = p.rightChild.rightChild
+				} or {
+					a = p.leftChild.leftChild
+					b = p.leftChild.rightChild
+					c = p.rightChild
+				}
 			}
-
-			// All rejected parents are earlier in the document than the actual one.
-			all alt: ran[lhs :> ProcHeader] - parent {
-				child.indent in alt.indent.^prefixOf implies alt in parent.^prev
-			}
+		} implies {
+				merge[a.parse, merge[b.parse, c.parse]] = merge[merge[a.parse, b.parse], c.parse]
 		}
+	}
+} for 5 but 10 MergeTree
+
+fun adopt[lhs : Parse, rhs : Parse] : Parse {
+	{ p : ran[lhs :> ProcHeader]
+	, c : ran[rhs]
+	| bestParent[lhs, p, c]
+	}
+}
+
+pred bestParent[lhs : Parse, parent : one ProcHeader, child : one Line] {
+
+	// The best parent can be a parent.
+	canBeParent[parent, child]
+
+	all mid: between[doc/ordering/next, parent, child] {
+
+		// No line between the parent and child can be a parent for the child.
+		not canBeParent[mid, child]
+
+		// All the lines between the parent and child can be children of the parent.
+		canBeParent[parent, mid]
+	}
+}
+
+pred canBeParent[candidate : one Line, child : one Line] {
+	canBeParent2[candidate, child]
+
+	child in Empty implies some later : Line - Empty {
+		later in child.^next
+		canBeParent2[candidate, later]
+	}
+}
+
+pred canBeParent2[candidate : one Line, child : one Line] {
+
+	candidate in ProcHeader
+
+	// The non-empty child must be indented further than a valid parent.
+	child in Line - Empty implies child.deeperThan[candidate]
+
+	// A valid parent precedes the child.
+	child in candidate.^next
+
+	// All non-empty lines between a valid parent and child must be indented further than the parent.
+	all mid : between[doc/ordering/next, candidate, child] - Empty {
+		mid.deeperThan[candidate]
 	}
 }
 
@@ -160,9 +224,7 @@ fact {
 	// No branch has a (singular) merged line.
 	no branch : Branch | some branch.mergedLine
 	
-	// For every line there exists a leaf.
-	//all l : doc/Line | one leaf : Leaf | leaf -> l in mergedLine
-//	all leaf : Leaf | one l : Line | leaf -> l in mergedLine
+	// For every line there exists a leaf (and vice versa).
 	bijection[mergedLine, Leaf, Line]
 
 	// No leaf has children

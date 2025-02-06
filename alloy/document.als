@@ -86,6 +86,32 @@ fact {
 	rootedAt[~prefixOf, Line.indent]
 }
 
+// Utility predicates for the depths of lines and indents.
+
+pred deeperThan[lhs : one Line, rhs : one Line] {
+	deeperThan[lhs.indent, rhs.indent]
+}
+
+pred deeperThan[lhs : one Indent, rhs : one Indent] {
+	lhs in rhs.^prefixOf
+}
+
+check allPrecedingIndentsAreDeeper {
+	all indent : Indent | all preceding : indent.^~prefixOf | indent.deeperThan[preceding]
+}
+
+check allFurtherIndentsAreDeeperThanNone {
+	all further : Indent - NoIndent | further.deeperThan[NoIndent]
+}
+
+check noIndentIsDeeperThanItself {
+	no indent : Indent | indent.deeperThan[indent]
+}
+
+check anIndentIsDeeperThanAllFollowingIt {
+	all indent : Indent | all following : indent.^prefixOf | following.deeperThan[indent]
+}
+
 // A few custom graph predicates.
 
 pred depth[t: univ -> univ] { some (dom[t] & ran[t]) }
