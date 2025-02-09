@@ -29,7 +29,12 @@ func Parse(r io.Reader) ([]Node, error) {
 	return out.nodes(), err
 }
 
-type parse struct{}
+type parse struct {
+	emptyPrefix []Node
+	complete    []Node
+	emptySuffix []Node
+	incomplete  Node
+}
 
 func oneLineParse(n indentedNode) parse {
 	return parse{}

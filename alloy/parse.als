@@ -6,6 +6,7 @@ open util/graph[doc/Line]
 open util/graph[MergeTree]
 
 // Make sure the model has examples at all.
+
 run example {} for 4 but 8 MergeTree
 
 // Make sure the model does not exclude some types of examples we care about.
@@ -201,6 +202,7 @@ abstract sig MergeTree {
 	, rightChild : disj lone MergeTree
 	, mergedLine : disj lone doc/Line
 	, parse : Parse
+	, ranges : LineRange
 }
 
 sig Branch extends MergeTree {}
@@ -242,6 +244,12 @@ fact {
 
 	// The parses of all leafs are their lines, marked as orphans.
 	all leaf : Leaf | leaf.parse = NoParent -> leaf.mergedLine
+
+	// The line ranges of all branches come from merging the range sets of their children.
+	all branch : Branch | branch.ranges = mergeRanges[branch.leftChild.ranges, branch.rightChild.ranges]
+
+	// The line ranges of all leafs are the single-element ranges of their lines.
+	all leaf : Leaf | leaf.ranges = leaf.mergedLine -> leaf.mergedLine
 }
 
 check rootMergesAllLines {
@@ -256,6 +264,82 @@ check lastLineIsRightmostLeafInTree {
 	one Line or doc/ordering/last = (roots[merges].*rightChild & Leaf).mergedLine
 } for 5 but 10 MergeTree
 
+// A parse of a subset of lines must account for all the lines in it's scope.
+// That includes those that do not have a parent within that parse.
+
+let Parse = MaybeParent -> one doc/Line
+
+sig MaybeParent in NoParent + doc/ProcHeader {}
+
+one sig NoParent {}
+
+// A single line range is lastLine -> firstLine pair.
+
+let LineRange = Line one -> one Line
+
+check theEmptyBinaryRelationIsTheLeftIdentityOfMergRanges {
+	all r : MergeTree.ranges | mergeRanges[none -> none, r] = r
+} for 5 but 10 MergeTree
+
+check theEmptyBinaryRelationIsTheRightIdentityOfMergeRanges {
+	all r : MergeTree.ranges | r = mergeRanges[r, none -> none]
+} for 5 but 10 MergeTree
+
+check mergeRangesIsAssociative {
+	all disj a, b, c : MergeTree {
+		{
+			one p : MergeTree {
+				{
+					a = p.leftChild
+					b = p.rightChild.leftChild
+					c = p.rightChild.rightChild
+				} or {
+					a = p.leftChild.leftChild
+					b = p.leftChild.rightChild
+					c = p.rightChild
+				}
+			}
+		} implies {
+			mergeRanges[a.ranges, mergeRanges[b.ranges, c.ranges]] = mergeRanges[mergeRanges[a.ranges, b.ranges], c.ranges]
+		}
+	}
+} for 5 but 10 MergeTree
+
+check allButTheLastLineInARangeAreAlwaysEmpty {
+	all t : MergeTree |
+	all r : t.ranges |
+		#lastLine[lines[r]] > 1 implies lines[r] - lastLine[lines[r]] in Empty
+} for 5 but 10 MergeTree
+
+fun mergeRanges[lhs : LineRange, rhs : LineRange] : LineRange {
+	{ last, first : Line
+	|
+		{
+			// We need to special-case when the last range in the lhs is all empty.
+			last in Empty
+			last = lastLine[lines[lhs]]
+		} implies {
+			{
+				rhs = none -> none 
+			} implies {
+				last -> first in lhs
+			} else {
+				let lhsKept = (ran[lhs] - last) <: lhs |
+				//let mergedMid =  |	
+				last -> first in lhsKept + rhs ++ { firstLine[ran[rhs]] -> lastLine[lines[lhs]].lhs }
+			}
+		} else {
+			last -> first in lhs + rhs
+		}
+	}
+}
+
+// Helpers
+
+fun lines[ranges : LineRange] : doc/Line {
+	ran[ranges] + between[doc/ordering/next, ran[ranges], dom[ranges]] + dom[ranges]
+}
+
 fun firstLine[lines : Line] : lone Line {
 	{ l: lines | no l.^prev & lines }
 }
@@ -263,21 +347,6 @@ fun firstLine[lines : Line] : lone Line {
 fun lastLine[lines : Line] : lone Line {
 	{ l: lines | no l.^next & lines }
 }
-
-// A parse of a subset of lines must account for all the lines in it's scope.
-// That includes those that do not have a parent within that parse.
-
-let Parse = MaybeParent -> doc/Line
-
-fun parsedLines[p : Parse] : doc/Line {
-	ran[p]
-}
-
-sig MaybeParent in NoParent + doc/ProcHeader {}
-
-one sig NoParent {}
-
-// Helpers
 
 fun between[r : univ -> univ, f : univ, l : univ]: univ {
 	f.^r - l.*r

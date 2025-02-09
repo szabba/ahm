@@ -17,7 +17,7 @@
    <type name="seq/Int"/>
 </node>
 
-<node color="Red" label="NoIndent">
+<node label="NoIndent">
    <type name="doc/NoIndent"/>
 </node>
 
@@ -25,19 +25,19 @@
    <type name="doc/FurtherIndent"/>
 </node>
 
-<node shape="Egg">
+<node shape="Egg" color="Green">
    <type name="Leaf"/>
 </node>
 
-<node shape="House">
+<node shape="House" color="Yellow">
    <type name="Branch"/>
 </node>
 
-<node shape="Inv Trapezoid" color="Gray">
+<node shape="Inv Trapezoid">
    <set name="$last" type="doc/Line"/>
 </node>
 
-<node shape="Trapezoid" color="Gray">
+<node shape="Trapezoid" color="White">
    <set name="$first" type="doc/Line"/>
 </node>
 
@@ -49,9 +49,12 @@
    <set name="MaybeParent" type="NoParent"/>
 </node>
 
+<node style="Dotted" color="Gray">
+   <type name="doc/Indent"/>
+</node>
+
 <node style="Dotted" color="White">
    <type name="MergeTree"/>
-   <type name="doc/Indent"/>
 </node>
 
 <node style="Solid" color="White">
