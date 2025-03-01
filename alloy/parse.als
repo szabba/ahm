@@ -2,6 +2,7 @@
 module parse
 
 open document as doc
+open util/ternary
 open util/graph[doc/Line]
 open util/graph[MergeTree]
 
@@ -11,7 +12,7 @@ run example {} for 4 but 8 MergeTree
 
 // Make sure the model does not exclude some types of examples we care about.
 
-run depth { depth[children] } for 5 but 10 MergeTree
+run depth { depth[children] } for 4 but 8 MergeTree
 
 run branching { branching[children] } for 5 but 10 MergeTree
 
@@ -37,7 +38,7 @@ run aChildCanBeEmpty {
 	some ran[children] & Empty
 } for 5 but 10 MergeTree
 
-run longDocument {} for 6 but 15 MergeTree, exactly 6 Line
+run longDocument {} for 6 but 12 MergeTree, exactly 6 Line
 
 pred niceIndents {
 	first.indent = NoIndent
@@ -58,63 +59,124 @@ check childrenIsForest { forest[children] } for 4 but 8 MergeTree
 
 check allNonRootsAreChildren {
 	Line - roots[children] = ran[children]
-} for 6 but 15 MergeTree
+} for 6 but 12 MergeTree
 
 check allLinesBetweenTheParentAndChildAreDescendantsOfTheParent {
 	all parent: dom[children] |
 	all child: parent.children |
-	between[doc/ordering/next, parent, child] in parent.^children
-} for 5 but 11 MergeTree
+	between[parent, child] in parent.^children
+} for 4 but 8 MergeTree
+
+check allNonEmptyLinesBetweenTheParentAndChildAreDescendantsOfTheParent {
+	all parent: dom[children] |
+	all child: parent.children |
+	between[parent, child] - Empty in parent.^children
+} for 4 but 8 MergeTree
 
 check allNonEmptyChildrenAreIndentedFurtherThanTheirParents {
 	all parent: dom[children] |
 	all child: parent.children - Empty |
 	child.indent in parent.indent.^prefixOf
-} for 5 but 11 MergeTree
+} for 5 but 10 MergeTree
 
 check noParentHasOnlyEmptyChildren {
 	no p: dom[children] | p.children in Empty
-} for 5 but 11 MergeTree
+} for 5 but 10 MergeTree
 
 check noParentHasAnEmptyLastChild {
 	no parent: dom[children] | lastLine[parent.children] in Empty
-} for 5 but 11 MergeTree
+} for 5 but 10 MergeTree
 
 check noChildrenWhenAllLinesHaveTheSameIndent {
 	one Line.indent implies no children
-} for 3 but 7 MergeTree
-
-fun siblings : Line -> Line {
-    { s1, s2: Line | some p: Line | s1 + s2 in p.children } + (roots[children] -> roots[children]) - iden
-}
+} for 3 but 6 MergeTree
 
 // The parse forest implied by the sequence of lines and their indents.
 
 fun children : ProcHeader -> Line {
-	ProcHeader <: roots[merges].parse
+	let rootParse = roots[merges].parse | { p : ProcHeader, c : Line | inRange[c, rootParse.p] }
+}
+
+fun parent : Line -> ProcHeader { ~children }
+
+fun siblings : Line -> Line {
+    { s1, s2: Line | s1.parent = s2.parent or no s1.parent + s2.parent }
+}
+
+// A parse of a subset of lines must account for all the lines in it's scope.
+// That includes those that do not have a parent within that parse.
+
+let Parse = LineRange -> MaybeParent
+
+sig MaybeParent in NoParent + doc/ProcHeader {}
+
+one sig NoParent {}
+
+fun lines[parse : Parse] : Line {
+	lines[select12[parse]]
+}
+
+fun parented[p : Parse] : LineRange {
+	p.ProcHeader
+}
+
+fun orphan[p : Parse] : LineRange {
+	p.NoParent
 }
 
 // Monoidal parser.
 
-fun merge[lhs : Parse, rhs : Parse] : Parse {
-	// No lines on the lhs change their parent.
-	// The merging done so far should've added those where possible.
-	//
-	// Where possible rhs orphan lines are adopted.
-	//
-    // An implementation would not need to keep track of already parented rhs lines.
-	// They would be the non-roots of the rhs forest.
-	//
-	// (The roots of the rhs forest are the same as it's orphans.)
-	lhs + rhs :> parented[rhs] + adopt[lhs, rhs :> orphan[rhs]] + trackUnadopted[lhs, rhs :> orphan[rhs]]
+fun merge[lhs, rhs : Parse] : Parse {
+	let mrs = mergeRanges[select12[lhs], select12[rhs]] |
+	let kept =
+		{ last, first : Line, p : ProcHeader
+		| 
+			{
+				last -> first in mrs
+				p = last.(lhs + rhs)[first]
+			}
+		}
+	|
+	let newlyAdopted =
+		{ last, first : Line, p : ProcHeader
+		|
+			{
+				last -> first in mrs
+				p in dom[mrs]
+
+				last -> first not in kept.MaybeParent
+
+				last not in Empty
+
+				first in p.^next
+				last.deeperThan[p]
+
+				all mid : between[p, last] & dom[mrs] {
+					mid.deeperThan[p]
+					mid in ProcHeader implies (mid.indent = last.indent or mid.deeperThan[last])
+				}
+			}
+		}
+	|
+	let stillOrphaned =
+		{ last, first : Line, p : NoParent
+		|
+			{
+				last -> first in mrs
+
+				last -> first not in (kept + newlyAdopted).MaybeParent
+			}
+		}
+	|
+		kept + newlyAdopted + stillOrphaned
 }
 
-check theEmptyBinaryRelationIsTheLeftIdentityOfMerge {
-	all p : MergeTree.parse | merge[none -> none, p] = p
+check theEmptyTernaryRelationIsTheLeftIdentityOfMerge {
+	all t : MergeTree | merge[none -> none -> none, t.parse] = t.parse
 } for 5 but 10 MergeTree
 
-check theEmptyBinaryRelationIsTheRightIdentityOfMerge {
-	all p : MergeTree.parse | p = merge[p, none -> none]
+check theEmptyTernaryRelationIsTheRightIdentityOfMerge {
+	all t : MergeTree | t.parse = merge[t.parse, none -> none -> none]
 } for 5 but 10 MergeTree
 
 check mergeIsAssociative {
@@ -132,150 +194,45 @@ check mergeIsAssociative {
 				}
 			}
 		} implies {
-				merge[a.parse, merge[b.parse, c.parse]] = merge[merge[a.parse, b.parse], c.parse]
+			merge[a.parse, merge[b.parse, c.parse]] = merge[merge[a.parse, b.parse], c.parse]
 		}
 	}
 } for 5 but 10 MergeTree
 
-fun adopt[lhs : Parse, rhs : Parse] : Parse {
-	{ p : ran[lhs :> ProcHeader]
-	, c : ran[rhs]
-	| bestParent[lhs, p, c]
-	}
-}
-
-pred bestParent[lhs : Parse, parent : one ProcHeader, child : one Line] {
-
-	// The best parent can be a parent.
-	canBeParent[parent, child]
-
-	all mid: between[doc/ordering/next, parent, child] {
-
-		// No line between the parent and child can be a parent for the child.
-		not canBeParent[mid, child]
-
-		// All the lines between the parent and child can be children of the parent.
-		canBeParent[parent, mid]
-	}
-}
-
-pred canBeParent[candidate : one Line, child : one Line] {
-	canBeParent2[candidate, child]
-
-	child in Empty implies some later : Line - Empty {
-		later in child.^next
-		canBeParent2[candidate, later]
-	}
-}
-
-pred canBeParent2[candidate : one Line, child : one Line] {
-
-	candidate in ProcHeader
-
-	// The non-empty child must be indented further than a valid parent.
-	child in Line - Empty implies child.deeperThan[candidate]
-
-	// A valid parent precedes the child.
-	child in candidate.^next
-
-	// All non-empty lines between a valid parent and child must be indented further than the parent.
-	all mid : between[doc/ordering/next, candidate, child] - Empty {
-		mid.deeperThan[candidate]
-	}
-}
-
-fun trackUnadopted[lhs : Parse, rhs : Parse] : Parse {
-	let adopted = ran[adopt[lhs, rhs]] | rhs :> (ran[rhs] - adopted)
-}
-
-fun parented[p : Parse] : Line {
-	ProcHeader.p
-}
-
-fun orphan[p : Parse] : Line {
-	NoParent.p
-}
-
-// A tree describing how to merge partial parses using the monoidal parser.
-abstract sig MergeTree {
-	, leftChild : disj lone MergeTree
-	, rightChild : disj lone MergeTree
-	, mergedLine : disj lone doc/Line
-	, parse : Parse
-	, ranges : LineRange
-}
-
-sig Branch extends MergeTree {}
-sig Leaf extends MergeTree {}
-
-// The set of lines merged by a given subtree.
-fun mergedLines[t : MergeTree]: doc/Line {
-	t.*merges.mergedLine
-}
-
-fun merges : MergeTree -> MergeTree {
-	leftChild + rightChild
-}
-
-fact {
-	tree[merges]
-
-	// All branches have two children.
-	all branch : Branch | #merges[branch] = 2
-
-	// No branch has a (singular) merged line.
-	no branch : Branch | some branch.mergedLine
-	
-	// For every line there exists a leaf (and vice versa).
-	bijection[mergedLine, Leaf, Line]
-
-	// No leaf has children
-	no Leaf.merges
-
-	all t : MergeTree | consecutive[mergedLines[t]]
-
-	// Merge tree order respects document order.
-	all branch : Branch {
-		lastLine[mergedLines[branch.leftChild]].next = firstLine[mergedLines[branch.rightChild]]
-	}
-
-	// The parses of all branches come from merging parses of their children.
-	all branch : Branch | branch.parse = merge[branch.leftChild.parse, branch.rightChild.parse]
-
-	// The parses of all leafs are their lines, marked as orphans.
-	all leaf : Leaf | leaf.parse = NoParent -> leaf.mergedLine
-
-	// The line ranges of all branches come from merging the range sets of their children.
-	all branch : Branch | branch.ranges = mergeRanges[branch.leftChild.ranges, branch.rightChild.ranges]
-
-	// The line ranges of all leafs are the single-element ranges of their lines.
-	all leaf : Leaf | leaf.ranges = leaf.mergedLine -> leaf.mergedLine
-}
-
-check rootMergesAllLines {
-	mergedLines[roots[merges]] = Line
-} for 5 but 10 MergeTree
-
-check firstLineIsInLeftmostLeafInTree {
-	one Line or doc/ordering/first = (roots[merges].*leftChild & Leaf).mergedLine
-} for 5 but 10 MergeTree
-
-check lastLineIsRightmostLeafInTree {
-	one Line or doc/ordering/last = (roots[merges].*rightChild & Leaf).mergedLine
-} for 5 but 10 MergeTree
-
-// A parse of a subset of lines must account for all the lines in it's scope.
-// That includes those that do not have a parent within that parse.
-
-let Parse = MaybeParent -> one doc/Line
-
-sig MaybeParent in NoParent + doc/ProcHeader {}
-
-one sig NoParent {}
-
 // A single line range is lastLine -> firstLine pair.
 
 let LineRange = Line one -> one Line
+
+fun mergeRanges[lhs : LineRange, rhs : LineRange] : LineRange {
+	{
+		one lastLine[dom[lhs]]
+		lastLine[dom[lhs]] in Empty
+		some rhs
+
+	} implies {
+		let mergedRange = firstLine[dom[rhs]] -> lastLine[dom[lhs]].lhs | 
+		(Line - lastLine[dom[lhs]]) <: (lhs + rhs ++ mergedRange)
+		// Equivalently(?):
+		// (Line - lastLine[dom[lhs]]) <: lhs + (Line - firstLine[dom[lhs]]) <: rhs + mergedRange
+	
+	} else {
+		lhs + rhs
+	}
+}
+
+fun lines[ranges : LineRange] : Line {
+	{ line : Line
+	|
+		some l, f : Line {
+			l -> f in ranges
+			line in f + between[f, l] + l
+		} 
+	}
+}
+
+pred inRange[l : one Line, r : /* one */ LineRange] {
+	l in ran[r] + between[ran[r], dom[r]] + dom[r]
+}
 
 check theEmptyBinaryRelationIsTheLeftIdentityOfMergRanges {
 	all r : MergeTree.ranges | mergeRanges[none -> none, r] = r
@@ -311,34 +268,86 @@ check allButTheLastLineInARangeAreAlwaysEmpty {
 		#lastLine[lines[r]] > 1 implies lines[r] - lastLine[lines[r]] in Empty
 } for 5 but 10 MergeTree
 
-fun mergeRanges[lhs : LineRange, rhs : LineRange] : LineRange {
-	{ last, first : Line
-	|
-		{
-			// We need to special-case when the last range in the lhs is all empty.
-			last in Empty
-			last = lastLine[lines[lhs]]
-		} implies {
-			{
-				rhs = none -> none 
-			} implies {
-				last -> first in lhs
-			} else {
-				let lhsKept = (ran[lhs] - last) <: lhs |
-				//let mergedMid =  |	
-				last -> first in lhsKept + rhs ++ { firstLine[ran[rhs]] -> lastLine[lines[lhs]].lhs }
-			}
-		} else {
-			last -> first in lhs + rhs
-		}
+check rangesOnATreeCoverAllTheMergedLines {
+	all t : MergeTree | t.mergedLines = lines[t.ranges]
+} for 5 but 10 MergeTree
+
+check noRangesOnATreeOverlap {
+	no t : MergeTree | some disj l1, l2: dom[t.ranges] {
+		some lines[l1 -> t.ranges[l1]] & lines[l2 -> t.ranges[l2]]
 	}
+} for 5 but 10 MergeTree
+
+// A tree describing how to merge partial parses using the monoidal parser.
+// We use it for associativity checks.
+
+abstract sig MergeTree {
+	, leftChild : disj lone MergeTree
+	, rightChild : disj lone MergeTree
+	, mergedLine : disj lone doc/Line
+	, parse : Parse
+	// TODO: read these out from the parses instead. The current representation allows that.
+	, ranges : LineRange
 }
+
+sig Branch extends MergeTree {}
+sig Leaf extends MergeTree {}
+
+// The set of lines merged by a given subtree.
+fun mergedLines[t : MergeTree]: doc/Line {
+	t.*merges.mergedLine
+}
+
+fun merges : MergeTree -> MergeTree { leftChild + rightChild }
+
+fact {
+	tree[merges]
+
+	// All branches have two children.
+	all branch : Branch | #merges[branch] = 2
+
+	// No branch has a (singular) merged line.
+	no branch : Branch | some branch.mergedLine
+	
+	// For every line there exists a leaf (and vice versa).
+	bijection[mergedLine, Leaf, Line]
+
+	// No leaf has children
+	no Leaf.merges
+
+	all t : MergeTree | consecutive[mergedLines[t]]
+
+	// Merge tree order respects document order.
+	all branch : Branch {
+		lastLine[mergedLines[branch.leftChild]].next = firstLine[mergedLines[branch.rightChild]]
+	}
+
+	// The parses of all branches come from merging parses of their children.
+	all branch : Branch | branch.parse = merge[branch.leftChild.parse, branch.rightChild.parse]
+
+	// The parses of all leafs are their lines, marked as orphans.
+	all leaf : Leaf | leaf.parse = leaf.mergedLine -> leaf.mergedLine -> NoParent
+
+	// The line ranges of all branches come from merging the range sets of their children.
+	all branch : Branch | branch.ranges = mergeRanges[branch.leftChild.ranges, branch.rightChild.ranges]
+
+	// The line ranges of all leafs are the single-element ranges of their lines.
+	all leaf : Leaf | leaf.ranges = leaf.mergedLine -> leaf.mergedLine
+}
+
+check rootMergesAllLines {
+	mergedLines[roots[merges]] = Line
+} for 5 but 10 MergeTree
+
+check firstLineIsInLeftmostLeafInTree {
+	one Line or doc/ordering/first = (roots[merges].*leftChild & Leaf).mergedLine
+} for 5 but 10 MergeTree
+
+check lastLineIsRightmostLeafInTree {
+	one Line or doc/ordering/last = (roots[merges].*rightChild & Leaf).mergedLine
+} for 5 but 10 MergeTree
 
 // Helpers
-
-fun lines[ranges : LineRange] : doc/Line {
-	ran[ranges] + between[doc/ordering/next, ran[ranges], dom[ranges]] + dom[ranges]
-}
 
 fun firstLine[lines : Line] : lone Line {
 	{ l: lines | no l.^prev & lines }
@@ -348,6 +357,6 @@ fun lastLine[lines : Line] : lone Line {
 	{ l: lines | no l.^next & lines }
 }
 
-fun between[r : univ -> univ, f : univ, l : univ]: univ {
-	f.^r - l.*r
+fun between[f : one Line, l : one Line] : Line {
+	f.^next - l.*next
 }
