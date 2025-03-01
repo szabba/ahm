@@ -154,7 +154,6 @@ fun merge[lhs, rhs : Parse] : Parse {
 				all mid : between[p, last] & dom[mrs] {
 					mid.deeperThan[p]
 					mid in ProcHeader implies not last.deeperThan[mid]
-					// mid in ProcHeader implies (mid.indent = last.indent or mid.deeperThan[last])
 				}
 			}
 		}
@@ -177,7 +176,7 @@ check theEmptyTernaryRelationIsTheLeftIdentityOfMerge {
 } for 5 but 10 MergeTree
 
 check theEmptyTernaryRelationIsTheRightIdentityOfMerge {
-	all t : MergeTree | t.parse = merge[t.parse, none -> none -> none]
+	all t : MergeTree | t.parse = merge[t.parse, none -> none -> none] 
 } for 5 but 10 MergeTree
 
 check mergeIsAssociative {
