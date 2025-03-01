@@ -153,7 +153,8 @@ fun merge[lhs, rhs : Parse] : Parse {
 
 				all mid : between[p, last] & dom[mrs] {
 					mid.deeperThan[p]
-					mid in ProcHeader implies (mid.indent = last.indent or mid.deeperThan[last])
+					mid in ProcHeader implies not last.deeperThan[mid]
+					// mid in ProcHeader implies (mid.indent = last.indent or mid.deeperThan[last])
 				}
 			}
 		}
