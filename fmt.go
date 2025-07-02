@@ -5,12 +5,23 @@
 package ahm
 
 import (
+	"bytes"
 	"fmt"
 	"io"
 	"iter"
 )
 
-// Fmt serializes the given docs.
+// FmtString returns the serialized form of doc.
+func FmtString(doc []Node) string {
+	buf := new(bytes.Buffer)
+	err := Fmt(buf, doc)
+	if err != nil {
+		panic(err)
+	}
+	return buf.String()
+}
+
+// Fmt serializes the given docs
 func Fmt(w io.Writer, doc []Node) (err error) {
 
 	defer func() {
