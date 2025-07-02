@@ -10,11 +10,14 @@ import (
 )
 
 type Node struct {
-	lineNo      int64
+	lineNo int64
+
 	proc        bool
 	name, title string
 	children    []Node
-	text        string
+
+	text    string
+	escaped bool
 }
 
 func Proc(name, title string, children ...Node) Node {
@@ -26,10 +29,25 @@ func Proc(name, title string, children ...Node) Node {
 	}
 }
 
-func Text(text string) Node { return Node{text: text} }
+func Text(text string) Node {
+	if strings.ContainsRune(text, '\n') {
+		err := fmt.Errorf("string %q contains %q", text, '\n')
+		panic(err)
+	}
+	return Node{text: text, escaped: startsWithSpace(text)}
+}
 
-func (n Node) Proc() bool { return n.proc }
-func (n Node) Text() bool { return !n.proc }
+func startsWithSpace(s string) bool {
+	return !strings.HasPrefix(s, strings.TrimSpace(s))
+}
+
+func EscapedText(text string) Node {
+	return Node{text: text, escaped: true}
+}
+
+func (n Node) Proc() bool    { return n.proc }
+func (n Node) Text() bool    { return !n.proc }
+func (n Node) Escaped() bool { return n.escaped }
 
 func (n Node) Empty() bool { return n.Text() && n.NodeText() == "" }
 
@@ -82,7 +100,12 @@ func (n Node) String() string {
 	var buf strings.Builder
 
 	if !n.proc {
-		buf.WriteString(`Text(`)
+		if !n.escaped {
+
+			buf.WriteString(`Text(`)
+		} else {
+			buf.WriteString(`EscapedText(`)
+		}
 		fmt.Fprintf(&buf, "%q", n.text)
 		buf.WriteString(`)`)
 		return buf.String()

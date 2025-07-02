@@ -39,6 +39,83 @@ func TestTextIsNotProc(t *testing.T) {
 		True(!is, "%s claims it is a proc", n)
 }
 
+func TestTextCannotContainNewline(t *testing.T) {
+	// given
+	raw := "\n"
+
+	// when
+	caught := catchPanic(func() {
+		ahm.Text(raw)
+	})
+
+	// then
+	_, isErr := caught.(error)
+	assert.UsingFmt(t.Errorf).
+		True(
+			isErr, "caught panic value %#v is a %T not an error",
+			caught, caught)
+}
+
+func TestTextWithWhitespacePrefixIsEscaped(t *testing.T) {
+	// given
+	n := ahm.Text(" Sample")
+
+	// when
+	is := n.Escaped()
+
+	// then
+	assert.UsingFmt(t.Errorf).
+		True(is, "%s claims it is not escaped", n)
+}
+
+func TestTextWithNoWhitespacePrefixIsNotEscaped(t *testing.T) {
+	// given
+	n := ahm.Text("Sample")
+
+	// when
+	is := n.Escaped()
+
+	// then
+	assert.UsingFmt(t.Errorf).
+		True(!is, "%s claims it is escaped", n)
+}
+
+func TestEscapedTextIsText(t *testing.T) {
+	// given
+	n := ahm.EscapedText("Sample")
+
+	// when
+	is := n.Text()
+
+	// then
+	assert.UsingFmt(t.Errorf).
+		True(is, "%s claims not to be text", n)
+}
+
+func TestEscapedTextIsEscapedWhenItDoesNotStartWithWhitespace(t *testing.T) {
+	// given
+	n := ahm.EscapedText("Sample")
+
+	// when
+	is := n.Escaped()
+
+	// then
+	assert.UsingFmt(t.Errorf).
+		True(is, "%s claims not to be escaped", n)
+}
+
+func TestEscapedTextIsEscapedWhenItDoesStartWithWhitespace(t *testing.T) {
+	// given
+	n := ahm.EscapedText(" Sample")
+
+	// when
+	is := n.Escaped()
+
+	// then
+	assert.UsingFmt(t.Errorf).
+		True(is, "%s claims not to be escaped", n)
+}
+
 func TestProcIsNotText(t *testing.T) {
 	// given
 	n := ahm.Proc("H1", "A header")
@@ -212,6 +289,39 @@ func TestTextString(t *testing.T) {
 
 	// then
 	assert.UsingFmt(t.Errorf).That(theval.Equal(s, `Text("Sample")`))
+}
+
+func TestTextWithWhitespacePrefixString(t *testing.T) {
+	// given
+	n := ahm.Text(" Sample")
+
+	// when
+	s := n.String()
+
+	// then
+	assert.UsingFmt(t.Errorf).That(theval.Equal(s, `EscapedText(" Sample")`))
+}
+
+func TestEscapedTextWithNoWhitespacePrefixString(t *testing.T) {
+	// given
+	n := ahm.EscapedText("Sample")
+
+	// when
+	s := n.String()
+
+	// then
+	assert.UsingFmt(t.Errorf).That(theval.Equal(s, `EscapedText("Sample")`))
+}
+
+func TestEscapedTextWithWhitespacePrefixString(t *testing.T) {
+	// given
+	n := ahm.EscapedText(" Sample")
+
+	// when
+	s := n.String()
+
+	// then
+	assert.UsingFmt(t.Errorf).That(theval.Equal(s, `EscapedText(" Sample")`))
 }
 
 func TestMinProcString(t *testing.T) {
