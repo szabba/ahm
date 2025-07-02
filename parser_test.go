@@ -5,16 +5,16 @@
 package ahm_test
 
 import (
+	"errors"
 	"fmt"
 	"io"
-	"reflect"
 	"slices"
 	"strings"
 	"testing"
 
+	"github.com/aymanbagabas/go-udiff"
 	"github.com/szabba/assert/v3"
 	"github.com/szabba/assert/v3/assertions/theerr"
-	"github.com/szabba/assert/v3/assertions/theslice"
 	"github.com/szabba/assert/v3/assertions/theval"
 
 	"github.com/szabba/ahm"
@@ -283,8 +283,12 @@ func (c ParseCase) ExpectingErrorPlacedAt(lineNo int64, err error) ParseCase {
 }
 
 func (c ParseCase) ExpectedNodes(nodes []ahm.Node) error {
-	return theslice.EqualFunc(
-		nodes,
-		c.Nodes,
-		func(l, r ahm.Node) bool { return reflect.DeepEqual(l, r) })
+	want := ahm.FmtString(c.Nodes)
+	got := ahm.FmtString(nodes)
+
+	diff := udiff.Unified("want", "got", want, got)
+	if diff != "" {
+		return errors.New("\n" + diff)
+	}
+	return nil
 }
