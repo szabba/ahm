@@ -1,0 +1,9 @@
+@H1 Document title
+
+@CODE go
+	|	package main
+	|
+	|	func main() {
+	|	}
+
+Some explanatory text.
