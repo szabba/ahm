@@ -96,154 +96,169 @@ func FuzzParse(f *testing.F) {
 	})
 }
 
-func TestParse(t *testing.T) {
+func TestParseNodes(t *testing.T) {
 	// given
-	cases := map[string]ParseCase{
-		"Empty": ParseCase{}.
-			WithLines("").
-			ExpectingNodes(ahm.Text("")),
-
-		"OneLineOfText": ParseCase{}.
-			WithLines("One line").
-			ExpectingNodes(ahm.Text("One line")),
-
-		"MultipleLinesOfText": ParseCase{}.
-			WithLines(
-				"One line.",
-				"And another.").
-			ExpectingNodes(
-				ahm.Text("One line."),
-				ahm.Text("And another.")),
-
-		"EmptyNameProc": ParseCase{}.
-			WithLines("@").
-			ExpectingNodes().
-			ExpectingErrorPlacedAt(1, ahm.ErrUnacceptableProcName("")),
-
-		"NameOnlyProc": ParseCase{}.
-			WithLines("@TOC").
-			ExpectingNodes(ahm.Proc("TOC", "")),
-
-		"OneLineProc": ParseCase{}.
-			WithLines("@NAME Title").
-			ExpectingNodes(ahm.Proc("NAME", "Title")),
-
-		"IndentedFirstLine": ParseCase{}.
-			WithLines(
-				"    @DONE List tasks.",
-				"@TODO Do the thing.").
-			ExpectingNodes(
-				ahm.Proc("DONE", "List tasks."),
-				ahm.Proc("TODO", "Do the thing.")).
-			ExpectingErrorPlacedAt(1, ahm.ErrMismatchedIndents()),
-
-		"SuddenlyIndentedText": ParseCase{}.
-			WithLines(
-				"A line.",
-				"    And another, unexpectedly indented.").
-			ExpectingNodes(
-				ahm.Text("A line."),
-				ahm.Text("And another, unexpectedly indented.")).
-			ExpectingErrorPlacedAt(2, ahm.ErrMismatchedIndents()),
-
-		"ProcWithChild": ParseCase{}.
-			WithLines(
-				"@CODE bash",
-				"    git status").
-			ExpectingNodes(
-				ahm.Proc("CODE", "bash",
-					ahm.Text("git status"))),
-
-		"ProcWithChildAndGrandChild": ParseCase{}.
-			WithLines(
-				"@PROC",
-				"    @CHILD",
-				"        @GRANDCHILD").
-			ExpectingNodes(
-				ahm.Proc("PROC", "",
-					ahm.Proc("CHILD", "",
-						ahm.Proc("GRANDCHILD", "")))),
-
-		"ProcWithMisindentedChildText": ParseCase{}.
-			WithLines(
-				"@PROC",
-				"    @CHILD-PROC",
-				"  Misindented text.").
-			ExpectingNodes(
-				ahm.Proc("PROC", "",
-					ahm.Proc("CHILD-PROC", ""),
-					ahm.Text("Misindented text."))).
-			ExpectingErrorPlacedAt(3, ahm.ErrMismatchedIndents()),
-
-		"ProcWithMisindentedChildProc": ParseCase{}.
-			WithLines(
-				"@PROC",
-				"    @CHILD-PROC",
-				"  @MISINDENTED-CHILD-PROC").
-			ExpectingNodes(
-				ahm.Proc("PROC", "",
-					ahm.Proc("CHILD-PROC", ""),
-					ahm.Proc("MISINDENTED-CHILD-PROC", ""))).
-			ExpectingErrorPlacedAt(3, ahm.ErrMismatchedIndents()),
-
-		"TopLevelMisindentedProc": ParseCase{}.
-			WithLines(
-				"Some text.",
-				"    @OVERINDENTED-PROC").
-			ExpectingNodes(
-				ahm.Text("Some text."),
-				ahm.Proc("OVERINDENTED-PROC", "")).
-			ExpectingErrorPlacedAt(2, ahm.ErrMismatchedIndents()),
-
-		"ProcWithChildAfterEmmptyLine": ParseCase{}.
-			WithLines(
-				"@PROC",
-				"        ",
-				"    @CHILD").
-			ExpectingNodes(
-				ahm.Proc("PROC", "",
-					ahm.Text(""),
-					ahm.Proc("CHILD", ""))),
-
-		"ProcWithChildrenAndSibling": ParseCase{}.
-			WithLines(
-				"@PROC",
-				"    Child text",
-				"Sibling text").
-			ExpectingNodes(
-				ahm.Proc("PROC", "",
-					ahm.Text("Child text")),
-				ahm.Text("Sibling text")),
-
-		"ProcFollowedByMismactch": ParseCase{}.
-			WithLines(
-				"@PROC",
-				"    Child text",
-				"\tMismatch").
-			ExpectingNodes(
-				ahm.Proc("PROC", "",
-					ahm.Text("Child text")),
-				ahm.Text("Mismatch")),
-	}
-
-	for name, tt := range cases {
+	for name, tt := range parseCases {
 		t.Run(name, func(t *testing.T) {
 
 			in := strings.NewReader(tt.Input)
 
 			// when
-			nodes, err := ahm.Parse(in)
+			nodes, _ := ahm.Parse(in)
+
+			// then
+			assert.UsingFmt(t.Errorf).That(tt.ExpectedNodes(nodes))
+
+		})
+	}
+}
+
+func TestParseErrors(t *testing.T) {
+	// given
+	for name, tt := range parseCases {
+		t.Run(name, func(t *testing.T) {
+
+			in := strings.NewReader(tt.Input)
+
+			// when
+			_, err := ahm.Parse(in)
 
 			// then
 			assert := assert.UsingFmt(t.Errorf)
-
-			assert.That(tt.ExpectedNodes(nodes))
 
 			for _, errWanted := range tt.Errs {
 				assert.That(theerr.Is(err, errWanted))
 			}
 		})
 	}
+}
+
+var parseCases = map[string]ParseCase{
+	"Empty": ParseCase{}.
+		WithLines("").
+		ExpectingNodes(ahm.Text("")),
+
+	"OneLineOfText": ParseCase{}.
+		WithLines("One line").
+		ExpectingNodes(ahm.Text("One line")),
+
+	"MultipleLinesOfText": ParseCase{}.
+		WithLines(
+			"One line.",
+			"And another.").
+		ExpectingNodes(
+			ahm.Text("One line."),
+			ahm.Text("And another.")),
+
+	"EmptyNameProc": ParseCase{}.
+		WithLines("@").
+		ExpectingNodes().
+		ExpectingErrorPlacedAt(1, ahm.ErrUnacceptableProcName("")),
+
+	"NameOnlyProc": ParseCase{}.
+		WithLines("@TOC").
+		ExpectingNodes(ahm.Proc("TOC", "")),
+
+	"OneLineProc": ParseCase{}.
+		WithLines("@NAME Title").
+		ExpectingNodes(ahm.Proc("NAME", "Title")),
+
+	"IndentedFirstLine": ParseCase{}.
+		WithLines(
+			"    @DONE List tasks.",
+			"@TODO Do the thing.").
+		ExpectingNodes(
+			ahm.Proc("DONE", "List tasks."),
+			ahm.Proc("TODO", "Do the thing.")).
+		ExpectingErrorPlacedAt(1, ahm.ErrMismatchedIndents()),
+
+	"SuddenlyIndentedText": ParseCase{}.
+		WithLines(
+			"A line.",
+			"    And another, unexpectedly indented.").
+		ExpectingNodes(
+			ahm.Text("A line."),
+			ahm.Text("And another, unexpectedly indented.")).
+		ExpectingErrorPlacedAt(2, ahm.ErrMismatchedIndents()),
+
+	"ProcWithChild": ParseCase{}.
+		WithLines(
+			"@CODE bash",
+			"    git status").
+		ExpectingNodes(
+			ahm.Proc("CODE", "bash",
+				ahm.Text("git status"))),
+
+	"ProcWithChildAndGrandChild": ParseCase{}.
+		WithLines(
+			"@PROC",
+			"    @CHILD",
+			"        @GRANDCHILD").
+		ExpectingNodes(
+			ahm.Proc("PROC", "",
+				ahm.Proc("CHILD", "",
+					ahm.Proc("GRANDCHILD", "")))),
+
+	"ProcWithMisindentedChildText": ParseCase{}.
+		WithLines(
+			"@PROC",
+			"    @CHILD-PROC",
+			"  Misindented text.").
+		ExpectingNodes(
+			ahm.Proc("PROC", "",
+				ahm.Proc("CHILD-PROC", ""),
+				ahm.Text("Misindented text."))).
+		ExpectingErrorPlacedAt(3, ahm.ErrMismatchedIndents()),
+
+	"ProcWithMisindentedChildProc": ParseCase{}.
+		WithLines(
+			"@PROC",
+			"    @CHILD-PROC",
+			"  @MISINDENTED-CHILD-PROC").
+		ExpectingNodes(
+			ahm.Proc("PROC", "",
+				ahm.Proc("CHILD-PROC", ""),
+				ahm.Proc("MISINDENTED-CHILD-PROC", ""))).
+		ExpectingErrorPlacedAt(3, ahm.ErrMismatchedIndents()),
+
+	"TopLevelMisindentedProc": ParseCase{}.
+		WithLines(
+			"Some text.",
+			"    @OVERINDENTED-PROC").
+		ExpectingNodes(
+			ahm.Text("Some text."),
+			ahm.Proc("OVERINDENTED-PROC", "")).
+		ExpectingErrorPlacedAt(2, ahm.ErrMismatchedIndents()),
+
+	"ProcWithChildAfterEmmptyLine": ParseCase{}.
+		WithLines(
+			"@PROC",
+			"        ",
+			"    @CHILD").
+		ExpectingNodes(
+			ahm.Proc("PROC", "",
+				ahm.Text(""),
+				ahm.Proc("CHILD", ""))),
+
+	"ProcWithChildrenAndSibling": ParseCase{}.
+		WithLines(
+			"@PROC",
+			"    Child text",
+			"Sibling text").
+		ExpectingNodes(
+			ahm.Proc("PROC", "",
+				ahm.Text("Child text")),
+			ahm.Text("Sibling text")),
+
+	"ProcFollowedByMismactch": ParseCase{}.
+		WithLines(
+			"@PROC",
+			"    Child text",
+			"\tMismatch").
+		ExpectingNodes(
+			ahm.Proc("PROC", "",
+				ahm.Text("Child text")),
+			ahm.Text("Mismatch")),
 }
 
 type ParseCase struct {
